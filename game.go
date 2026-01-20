@@ -1,0 +1,299 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+// GameState represents the current state of the game
+type GameState int
+
+const (
+	StateMenu        GameState = iota
+	StateModeSelect            // Choose timed vs words
+	StateTimeSelect            // Choose duration
+	StateWordsSelect           // Choose word count
+	StateCustomInput           // Custom input
+	StatePlaying
+	StateFinished
+)
+
+// GameMode represents the type of game
+type GameMode int
+
+const (
+	ModeTimed GameMode = iota
+	ModeWords
+)
+
+// Game holds all game state
+type Game struct {
+	Words        []string // Words to type
+	CurrentInput string   // Current word being typed
+	WordIndex    int      // Current word position
+	Correct      []bool   // Track if each word was typed correctly
+	TypedWords   []string // What the user actually typed
+
+	StartTime time.Time
+	Duration  time.Duration
+	Elapsed   time.Duration
+
+	Mode        GameMode
+	TargetWords int // For words mode
+	State       GameState
+	TotalChars  int // Total characters typed
+	ErrorChars  int // Characters typed incorrectly
+}
+
+// NewTimedGame creates a new timed game
+func NewTimedGame(duration time.Duration) *Game {
+	words := getRandomWords(200) // Get enough words for any test
+	return &Game{
+		Words:      words,
+		Correct:    make([]bool, 0),
+		TypedWords: make([]string, 0),
+		Duration:   duration,
+		Mode:       ModeTimed,
+		State:      StatePlaying,
+	}
+}
+
+// NewWordsGame creates a new word-count game
+func NewWordsGame(wordCount int) *Game {
+	words := getRandomWords(wordCount + 10) // A few extra just in case
+	return &Game{
+		Words:       words,
+		Correct:     make([]bool, 0),
+		TypedWords:  make([]string, 0),
+		TargetWords: wordCount,
+		Mode:        ModeWords,
+		State:       StatePlaying,
+	}
+}
+
+// ModeString returns a string representation for leaderboard
+func (g *Game) ModeString() string {
+	if g.Mode == ModeTimed {
+		return fmt.Sprintf("time:%d", int(g.Duration.Seconds()))
+	}
+	return fmt.Sprintf("words:%d", g.TargetWords)
+}
+
+// Start begins the game timer
+func (g *Game) Start() {
+	if g.StartTime.IsZero() {
+		g.StartTime = time.Now()
+	}
+}
+
+// Update updates the elapsed time and checks if game is finished
+func (g *Game) Update() {
+	if g.State != StatePlaying || g.StartTime.IsZero() {
+		return
+	}
+
+	g.Elapsed = time.Since(g.StartTime)
+
+	// Check finish condition based on mode
+	if g.Mode == ModeTimed {
+		if g.Elapsed >= g.Duration {
+			g.Elapsed = g.Duration
+			g.State = StateFinished
+		}
+	}
+	// Words mode finishes when target reached (handled in HandleSpace)
+}
+
+// TimeRemaining returns the time remaining in seconds (for timed mode)
+func (g *Game) TimeRemaining() int {
+	if g.Mode == ModeWords {
+		return -1 // Indicates N/A
+	}
+	remaining := g.Duration - g.Elapsed
+	if remaining < 0 {
+		return 0
+	}
+	return int(remaining.Seconds())
+}
+
+// WordsRemaining returns words left to type (for words mode)
+func (g *Game) WordsRemaining() int {
+	if g.Mode == ModeTimed {
+		return -1
+	}
+	remaining := g.TargetWords - len(g.TypedWords)
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// Progress returns progress string for display
+func (g *Game) Progress() string {
+	if g.Mode == ModeTimed {
+		return fmt.Sprintf("%ds", g.TimeRemaining())
+	}
+	return fmt.Sprintf("%d/%d", len(g.TypedWords), g.TargetWords)
+}
+
+// HandleChar processes a typed character
+func (g *Game) HandleChar(char rune) {
+	if g.State != StatePlaying {
+		return
+	}
+
+	// Start timer on first keystroke
+	g.Start()
+
+	g.CurrentInput += string(char)
+	g.TotalChars++
+
+	// Check if current character is correct
+	currentWord := g.Words[g.WordIndex]
+	inputLen := len(g.CurrentInput)
+	if inputLen <= len(currentWord) {
+		if g.CurrentInput[inputLen-1] != currentWord[inputLen-1] {
+			g.ErrorChars++
+		}
+	} else {
+		g.ErrorChars++ // Typed more chars than the word has
+	}
+}
+
+// HandleSpace processes space (move to next word)
+func (g *Game) HandleSpace() {
+	if g.State != StatePlaying {
+		return
+	}
+
+	// Start timer on first keystroke
+	g.Start()
+
+	currentWord := g.Words[g.WordIndex]
+	isCorrect := g.CurrentInput == currentWord
+
+	g.Correct = append(g.Correct, isCorrect)
+	g.TypedWords = append(g.TypedWords, g.CurrentInput)
+	g.TotalChars++ // Count space
+
+	g.CurrentInput = ""
+	g.WordIndex++
+
+	// Check finish conditions
+	if g.WordIndex >= len(g.Words) {
+		g.State = StateFinished
+		return
+	}
+
+	// Words mode: check if target reached
+	if g.Mode == ModeWords && len(g.TypedWords) >= g.TargetWords {
+		g.State = StateFinished
+	}
+}
+
+// HandleBackspace removes the last character
+func (g *Game) HandleBackspace() {
+	if g.State != StatePlaying {
+		return
+	}
+
+	if len(g.CurrentInput) > 0 {
+		g.CurrentInput = g.CurrentInput[:len(g.CurrentInput)-1]
+	}
+}
+
+// WPM calculates words per minute
+// Standard: 5 characters = 1 word
+func (g *Game) WPM() int {
+	if g.Elapsed == 0 {
+		return 0
+	}
+
+	// Count total correct characters
+	correctChars := 0
+	for i, typed := range g.TypedWords {
+		if i < len(g.Words) && typed == g.Words[i] {
+			correctChars += len(typed) + 1 // +1 for space
+		}
+	}
+
+	minutes := g.Elapsed.Minutes()
+	if minutes == 0 {
+		return 0
+	}
+
+	// WPM = (correct chars / 5) / minutes
+	return int(float64(correctChars) / 5.0 / minutes)
+}
+
+// RawWPM calculates raw WPM (all typed characters, including errors)
+func (g *Game) RawWPM() int {
+	if g.Elapsed == 0 {
+		return 0
+	}
+
+	minutes := g.Elapsed.Minutes()
+	if minutes == 0 {
+		return 0
+	}
+
+	return int(float64(g.TotalChars) / 5.0 / minutes)
+}
+
+// Accuracy returns the accuracy percentage
+func (g *Game) Accuracy() int {
+	if g.TotalChars == 0 {
+		return 100
+	}
+
+	correctChars := g.TotalChars - g.ErrorChars
+	if correctChars < 0 {
+		correctChars = 0
+	}
+
+	return int(float64(correctChars) / float64(g.TotalChars) * 100)
+}
+
+// CurrentWordState returns the state of the current word being typed
+// Returns: (correct part, error part, remaining part)
+func (g *Game) CurrentWordState() (string, string, string) {
+	if g.WordIndex >= len(g.Words) {
+		return "", "", ""
+	}
+
+	word := g.Words[g.WordIndex]
+	input := g.CurrentInput
+
+	var correct, errors, remaining strings.Builder
+
+	for i := 0; i < len(word); i++ {
+		if i < len(input) {
+			if input[i] == word[i] {
+				correct.WriteByte(word[i])
+			} else {
+				errors.WriteByte(word[i])
+			}
+		} else {
+			remaining.WriteByte(word[i])
+		}
+	}
+
+	// Extra characters typed beyond word length
+	if len(input) > len(word) {
+		errors.WriteString(input[len(word):])
+	}
+
+	return correct.String(), errors.String(), remaining.String()
+}
+
+// CorrectWordsCount returns the number of correctly typed words
+func (g *Game) CorrectWordsCount() int {
+	count := 0
+	for _, c := range g.Correct {
+		if c {
+			count++
+		}
+	}
+	return count
+}

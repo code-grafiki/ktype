@@ -1,0 +1,17 @@
+# Build output
+ktype
+ktype.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug
+debug
+__debug_bin
