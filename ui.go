@@ -65,7 +65,9 @@ var (
 
 	containerStyle = lipgloss.NewStyle().
 			Padding(2, 4).
-			Margin(1, 2)
+			Margin(1, 2).
+			Height(20).
+			Width(65)
 
 	helpStyle = lipgloss.NewStyle().
 			Foreground(colorSubtle).
@@ -84,7 +86,7 @@ var (
 func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render("⌨  ktype")
+	title := titleStyle.Render(" ⌨  ktype")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -144,7 +146,7 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string 
 func RenderTimeSelect(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render("⌨  timed mode")
+	title := titleStyle.Render(" ⌨  timed mode")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -176,7 +178,7 @@ func RenderTimeSelect(lb *Leaderboard, width, height int, wantToQuit bool) strin
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("b → back • esc to quit")
+		help = helpStyle.Render("esc: back")
 	}
 	s.WriteString(help)
 
@@ -188,7 +190,7 @@ func RenderTimeSelect(lb *Leaderboard, width, height int, wantToQuit bool) strin
 func RenderWordsSelect(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render("⌨  words mode")
+	title := titleStyle.Render(" ⌨  words mode")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -221,7 +223,7 @@ func RenderWordsSelect(lb *Leaderboard, width, height int, wantToQuit bool) stri
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("b → back • esc to quit")
+		help = helpStyle.Render("esc: back")
 	}
 	s.WriteString(help)
 
@@ -240,7 +242,7 @@ func RenderCustomInput(input, mode string, width, height int) string {
 		prompt = "enter word count"
 	}
 
-	title := titleStyle.Render("⌨  " + prompt)
+	title := titleStyle.Render(" ⌨  " + prompt)
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -259,30 +261,31 @@ func RenderCustomInput(input, mode string, width, height int) string {
 func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	// Build the words display (3 lines, centered)
-	maxWordsWidth := 55
-	if width-16 < maxWordsWidth {
-		maxWordsWidth = width - 16
-	}
-	wordsLines := buildWordsLines(g, maxWordsWidth, 3)
+	// Inside the container, we have Width(65) and Padding(2, 4).
+	// So internal width is 65 - 4*2 = 57.
+	internalWidth := 57
+
+	// Build the words display (3 lines)
+	// We use a slightly smaller width for the words themselves to ensure they fit well
+	wordsLines := buildWordsLines(g, internalWidth-2, 3)
 
 	s.WriteString("\n")
 	for _, line := range wordsLines {
-		s.WriteString(lipgloss.PlaceHorizontal(width-16, lipgloss.Center, line))
+		s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, line))
 		s.WriteString("\n")
 	}
 	s.WriteString("\n")
 
 	// Progress (timer or word count)
 	progress := timerStyle.Render(g.Progress())
-	s.WriteString(lipgloss.PlaceHorizontal(width-16, lipgloss.Center, progress))
+	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, progress))
 	s.WriteString("\n\n")
 
 	// Live stats
 	wpm := wpmStyle.Render(fmt.Sprintf("%d wpm", g.WPM()))
 	accuracy := accuracyStyle.Render(fmt.Sprintf("%d%%", g.Accuracy()))
 	stats := statsStyle.Render(wpm + subtleStyle.Render("  •  ") + accuracy)
-	s.WriteString(lipgloss.PlaceHorizontal(width-16, lipgloss.Center, stats))
+	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, stats))
 
 	// Help text or quit confirmation
 	s.WriteString("\n\n")
@@ -290,9 +293,9 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("tab to restart • esc to quit")
+		help = helpStyle.Render("tab: restart • esc: abort")
 	}
-	s.WriteString(lipgloss.PlaceHorizontal(width-16, lipgloss.Center, help))
+	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, help))
 
 	content := containerStyle.Render(s.String())
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
@@ -306,7 +309,7 @@ func RenderFinished(g *Game, width, height int, isPB bool, wantToQuit bool) stri
 		title := newPBStyle.Render("🎉  new personal best!")
 		s.WriteString(title)
 	} else {
-		title := titleStyle.Render("⌨  test complete!")
+		title := titleStyle.Render(" ⌨  test complete!")
 		s.WriteString(title)
 	}
 	s.WriteString("\n\n")

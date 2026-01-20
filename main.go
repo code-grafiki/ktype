@@ -78,16 +78,6 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	// Double-esc to quit logic handled per-screen or globally here
-	if msg.Type == tea.KeyEsc && m.state != StatePlaying && m.state != StateCustomInput {
-		if m.wantToQuit {
-			return m, tea.Quit
-		}
-		m.wantToQuit = true
-		m.quitPressAt = time.Now()
-		return m, nil
-	}
-
 	// Reset wantToQuit on any other key
 	if msg.Type != tea.KeyEsc {
 		m.wantToQuit = false
@@ -126,8 +116,12 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "w":
 		m.state = StateWordsSelect
 		return m, nil
-	case "q": // Keep q as quick quit for power users? Or just use Esc.
-		// User asked to revert q to esc? "it says q to quit i want that to be reverted to esc"
+	case "esc":
+		if m.wantToQuit {
+			return m, tea.Quit
+		}
+		m.wantToQuit = true
+		m.quitPressAt = time.Now()
 		return m, nil
 	}
 	return m, nil
@@ -153,7 +147,7 @@ func (m model) handleTimeSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = StateCustomInput
 		m.wantToQuit = false
 		return m, nil
-	case "b":
+	case "esc":
 		m.state = StateMenu
 		return m, nil
 	}
@@ -184,7 +178,7 @@ func (m model) handleWordsSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = StateCustomInput
 		m.wantToQuit = false
 		return m, nil
-	case "b":
+	case "esc":
 		m.state = StateMenu
 		return m, nil
 	}
@@ -234,20 +228,26 @@ func (m model) handleCustomInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handlePlayingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEsc:
+	switch msg.String() {
+	case "esc":
 		if m.wantToQuit {
-			return m, tea.Quit
+			m.game = nil
+			m.state = StateMenu
+			m.wantToQuit = false
+			return m, nil
 		}
 		m.wantToQuit = true
 		m.quitPressAt = time.Now()
 		return m, nil
-	case tea.KeyTab:
+	case "tab":
 		// Restart - go back to menu
 		m.game = nil
 		m.state = StateMenu
 		m.wantToQuit = false
 		return m, nil
+	}
+
+	switch msg.Type {
 	case tea.KeyBackspace:
 		m.wantToQuit = false
 		if m.game != nil {
