@@ -249,15 +249,6 @@ func (m model) handlePlayingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = StateMenu
 		m.wantToQuit = false
 		return m, nil
-	case "r":
-		// Only restart if 'r' is pressed alone (not as part of typing)
-		// Check if we're not currently typing a word
-		if m.game != nil && len(m.game.CurrentInput) == 0 {
-			m.game = nil
-			m.state = StateMenu
-			m.wantToQuit = false
-			return m, nil
-		}
 	}
 
 	switch msg.Type {

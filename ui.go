@@ -44,7 +44,7 @@ var (
 
 	cursorStyle = lipgloss.NewStyle().
 			Foreground(colorAccent).
-			Bold(true)
+			Bold(false)
 
 	upcomingStyle = lipgloss.NewStyle().
 			Foreground(colorSubtle)
@@ -86,7 +86,7 @@ var (
 func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render(" ⌨  ktype")
+	title := titleStyle.Render("ktype")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -148,7 +148,7 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string 
 func RenderTimeSelect(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render(" ⌨  timed mode")
+	title := titleStyle.Render("timed mode")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -192,7 +192,7 @@ func RenderTimeSelect(lb *Leaderboard, width, height int, wantToQuit bool) strin
 func RenderWordsSelect(lb *Leaderboard, width, height int, wantToQuit bool) string {
 	var s strings.Builder
 
-	title := titleStyle.Render(" ⌨  words mode")
+	title := titleStyle.Render("words mode")
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
@@ -244,12 +244,12 @@ func RenderCustomInput(input, mode string, width, height int) string {
 		prompt = "enter word count"
 	}
 
-	title := titleStyle.Render(" ⌨  " + prompt)
+	title := titleStyle.Render(prompt)
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
 	// Show input with cursor
-	inputDisplay := wpmStyle.Render(input) + cursorStyle.Render("▌")
+	inputDisplay := wpmStyle.Render(input) + cursorStyle.Render("_")
 	s.WriteString("        " + inputDisplay)
 	s.WriteString("\n\n")
 
@@ -295,7 +295,7 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("r/tab: restart • esc: abort")
+		help = helpStyle.Render("tab: restart • esc: abort")
 	}
 	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, help))
 
@@ -311,7 +311,7 @@ func RenderFinished(g *Game, width, height int, isPB bool, wantToQuit bool) stri
 		title := newPBStyle.Render("🎉  new personal best!")
 		s.WriteString(title)
 	} else {
-		title := titleStyle.Render(" ⌨  test complete!")
+		title := titleStyle.Render("test complete!")
 		s.WriteString(title)
 	}
 	s.WriteString("\n\n")
@@ -343,7 +343,7 @@ func RenderFinished(g *Game, width, height int, isPB bool, wantToQuit bool) stri
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("r/tab to restart • esc to quit")
+		help = helpStyle.Render("tab to restart • esc to quit")
 	}
 	s.WriteString(help)
 
@@ -424,7 +424,7 @@ func buildWordsLines(g *Game, maxWidth int, numLines int) []string {
 				}
 			} else if wordIdx == g.WordIndex {
 				correct, errors, remaining := g.CurrentWordState()
-				cursor := cursorStyle.Render("▌")
+				cursor := cursorStyle.Render("_")
 				currentWord := correctStyle.Render(correct) +
 					errorStyle.Render(errors) +
 					cursor +
