@@ -13,7 +13,7 @@ var (
 	colorSubtle  = lipgloss.Color("#646669")
 	colorText    = lipgloss.Color("#d1d0c5")
 	colorError   = lipgloss.Color("#ca4754")
-	colorAccent  = lipgloss.Color("#e2b714")
+	colorAccent  = lipgloss.Color("#5eacd3")
 	colorCorrect = lipgloss.Color("#98c379")
 )
 
@@ -97,6 +97,7 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string 
 	// Get PBs for presets
 	pb30s := lb.GetPB("time:30")
 	pb50w := lb.GetPB("words:50")
+	pbZen := lb.GetPB("zen")
 
 	formatPB := func(s *Score) string {
 		if s == nil {
@@ -108,6 +109,7 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string 
 	options := []string{
 		wpmStyle.Render("1") + subtleStyle.Render(" → 30s timed") + formatPB(pb30s),
 		wpmStyle.Render("2") + subtleStyle.Render(" → 50 words") + formatPB(pb50w),
+		wpmStyle.Render("3") + subtleStyle.Render(" → zen mode") + formatPB(pbZen),
 	}
 
 	for _, opt := range options {
@@ -293,7 +295,7 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("tab: restart • esc: abort")
+		help = helpStyle.Render("r/tab: restart • esc: abort")
 	}
 	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, help))
 
@@ -341,7 +343,7 @@ func RenderFinished(g *Game, width, height int, isPB bool, wantToQuit bool) stri
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to quit")
 	} else {
-		help = helpStyle.Render("tab to restart • esc to quit")
+		help = helpStyle.Render("r/tab to restart • esc to quit")
 	}
 	s.WriteString(help)
 

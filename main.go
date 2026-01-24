@@ -110,6 +110,10 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.game = NewWordsGame(50)
 		m.state = StatePlaying
 		return m, tickCmd()
+	case "3": // Zen mode
+		m.game = NewZenGame()
+		m.state = StatePlaying
+		return m, tickCmd()
 	case "t":
 		m.state = StateTimeSelect
 		return m, nil
@@ -245,6 +249,15 @@ func (m model) handlePlayingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = StateMenu
 		m.wantToQuit = false
 		return m, nil
+	case "r":
+		// Only restart if 'r' is pressed alone (not as part of typing)
+		// Check if we're not currently typing a word
+		if m.game != nil && len(m.game.CurrentInput) == 0 {
+			m.game = nil
+			m.state = StateMenu
+			m.wantToQuit = false
+			return m, nil
+		}
 	}
 
 	switch msg.Type {

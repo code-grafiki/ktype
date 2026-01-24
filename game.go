@@ -25,6 +25,7 @@ type GameMode int
 const (
 	ModeTimed GameMode = iota
 	ModeWords
+	ModeZen
 )
 
 // Game holds all game state
@@ -72,12 +73,27 @@ func NewWordsGame(wordCount int) *Game {
 	}
 }
 
+// NewZenGame creates a new zen mode game (unlimited typing)
+func NewZenGame() *Game {
+	words := getRandomWords(1000) // Large pool for zen mode
+	return &Game{
+		Words:      words,
+		Correct:    make([]bool, 0),
+		TypedWords: make([]string, 0),
+		Mode:       ModeZen,
+		State:      StatePlaying,
+	}
+}
+
 // ModeString returns a string representation for leaderboard
 func (g *Game) ModeString() string {
 	if g.Mode == ModeTimed {
 		return fmt.Sprintf("time:%d", int(g.Duration.Seconds()))
 	}
-	return fmt.Sprintf("words:%d", g.TargetWords)
+	if g.Mode == ModeWords {
+		return fmt.Sprintf("words:%d", g.TargetWords)
+	}
+	return "zen"
 }
 
 // Start begins the game timer
@@ -103,11 +119,12 @@ func (g *Game) Update() {
 		}
 	}
 	// Words mode finishes when target reached (handled in HandleSpace)
+	// Zen mode never finishes automatically
 }
 
 // TimeRemaining returns the time remaining in seconds (for timed mode)
 func (g *Game) TimeRemaining() int {
-	if g.Mode == ModeWords {
+	if g.Mode != ModeTimed {
 		return -1 // Indicates N/A
 	}
 	remaining := g.Duration - g.Elapsed
@@ -119,7 +136,7 @@ func (g *Game) TimeRemaining() int {
 
 // WordsRemaining returns words left to type (for words mode)
 func (g *Game) WordsRemaining() int {
-	if g.Mode == ModeTimed {
+	if g.Mode != ModeWords {
 		return -1
 	}
 	remaining := g.TargetWords - len(g.TypedWords)
@@ -134,7 +151,10 @@ func (g *Game) Progress() string {
 	if g.Mode == ModeTimed {
 		return fmt.Sprintf("%ds", g.TimeRemaining())
 	}
-	return fmt.Sprintf("%d/%d", len(g.TypedWords), g.TargetWords)
+	if g.Mode == ModeWords {
+		return fmt.Sprintf("%d/%d", len(g.TypedWords), g.TargetWords)
+	}
+	return fmt.Sprintf("%d words", len(g.TypedWords))
 }
 
 // HandleChar processes a typed character
@@ -182,14 +202,22 @@ func (g *Game) HandleSpace() {
 
 	// Check finish conditions
 	if g.WordIndex >= len(g.Words) {
-		g.State = StateFinished
-		return
+		// For zen mode, generate more words if we run out
+		if g.Mode == ModeZen {
+			// Add more words to the pool
+			newWords := getRandomWords(100)
+			g.Words = append(g.Words, newWords...)
+		} else {
+			g.State = StateFinished
+			return
+		}
 	}
 
 	// Words mode: check if target reached
 	if g.Mode == ModeWords && len(g.TypedWords) >= g.TargetWords {
 		g.State = StateFinished
 	}
+	// Zen mode never finishes
 }
 
 // HandleBackspace removes the last character
