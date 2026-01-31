@@ -53,11 +53,11 @@ type Game struct {
 	TotalChars  int // Total characters typed
 	ErrorChars  int // Characters typed incorrectly
 
-	heatmap *Heatmap // Track keystroke errors for heatmap
+	heatmap *Heatmap // Model-level heatmap reference
 }
 
 // NewTimedGame creates a new timed game
-func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity WordComplexity) *Game {
+func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(200, difficulty, complexity) // Get enough words for any test
 	return &Game{
 		Words:      words,
@@ -68,12 +68,12 @@ func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity Word
 		Difficulty: difficulty,
 		Complexity: complexity,
 		State:      StatePlaying,
-		heatmap:    NewHeatmap(),
+		heatmap:    heatmap,
 	}
 }
 
 // NewWordsGame creates a new word-count game
-func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexity) *Game {
+func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(wordCount+10, difficulty, complexity) // A few extra just in case
 	return &Game{
 		Words:       words,
@@ -84,12 +84,12 @@ func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexit
 		Difficulty:  difficulty,
 		Complexity:  complexity,
 		State:       StatePlaying,
-		heatmap:     NewHeatmap(),
+		heatmap:     heatmap,
 	}
 }
 
 // NewZenGame creates a new zen mode game (unlimited typing)
-func NewZenGame(difficulty Difficulty, complexity WordComplexity) *Game {
+func NewZenGame(difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(1000, difficulty, complexity) // Large pool for zen mode
 	return &Game{
 		Words:      words,
@@ -99,7 +99,7 @@ func NewZenGame(difficulty Difficulty, complexity WordComplexity) *Game {
 		Difficulty: difficulty,
 		Complexity: complexity,
 		State:      StatePlaying,
-		heatmap:    NewHeatmap(),
+		heatmap:    heatmap,
 	}
 }
 
@@ -204,11 +204,9 @@ func (g *Game) HandleChar(char rune) {
 	}
 
 	// Track in heatmap
-	if g.heatmap != nil {
-		g.heatmap.RecordHit(charStr)
-		if !isCorrect {
-			g.heatmap.RecordError(charStr)
-		}
+	g.heatmap.RecordHit(charStr)
+	if !isCorrect {
+		g.heatmap.RecordError(charStr)
 	}
 }
 

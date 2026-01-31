@@ -31,6 +31,9 @@ type model struct {
 	// For custom word lists
 	wordListManager *WordListManager
 	currentWordList string // name of selected word list
+
+	// For heatmap (persists across games)
+	heatmap *Heatmap
 }
 
 func initialModel() model {
@@ -43,6 +46,7 @@ func initialModel() model {
 		complexity:      ComplexityNormal,
 		wordListManager: NewWordListManager(),
 		currentWordList: "",
+		heatmap:         NewHeatmap(),
 	}
 }
 
@@ -123,15 +127,15 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1": // Quick start 30s
-		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity)
+		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2": // Quick start 50 words
-		m.game = NewWordsGame(50, m.difficulty, m.complexity)
+		m.game = NewWordsGame(50, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3": // Zen mode
-		m.game = NewZenGame(m.difficulty, m.complexity)
+		m.game = NewZenGame(m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "t":
@@ -227,8 +231,8 @@ func (m model) handleHeatmapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = StateMenu
 		return m, nil
 	case "r":
-		if m.game != nil && m.game.heatmap != nil {
-			m.game.heatmap.Clear()
+		if m.heatmap != nil {
+			m.heatmap.Clear()
 		}
 		return m, nil
 	}
@@ -266,15 +270,15 @@ func (m model) handleCustomWordListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleTimeSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1":
-		m.game = NewTimedGame(15*time.Second, m.difficulty, m.complexity)
+		m.game = NewTimedGame(15*time.Second, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2":
-		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity)
+		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3":
-		m.game = NewTimedGame(60*time.Second, m.difficulty, m.complexity)
+		m.game = NewTimedGame(60*time.Second, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "c":
@@ -293,19 +297,19 @@ func (m model) handleTimeSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleWordsSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1":
-		m.game = NewWordsGame(10, m.difficulty, m.complexity)
+		m.game = NewWordsGame(10, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2":
-		m.game = NewWordsGame(25, m.difficulty, m.complexity)
+		m.game = NewWordsGame(25, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3":
-		m.game = NewWordsGame(50, m.difficulty, m.complexity)
+		m.game = NewWordsGame(50, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "4":
-		m.game = NewWordsGame(100, m.difficulty, m.complexity)
+		m.game = NewWordsGame(100, m.difficulty, m.complexity, m.heatmap)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "c":
@@ -343,9 +347,9 @@ func (m model) handleCustomInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return m, nil // Max 1000 words
 				}
 				if m.inputMode == "time" {
-					m.game = NewTimedGame(time.Duration(value)*time.Second, m.difficulty, m.complexity)
+					m.game = NewTimedGame(time.Duration(value)*time.Second, m.difficulty, m.complexity, m.heatmap)
 				} else {
-					m.game = NewWordsGame(value, m.difficulty, m.complexity)
+					m.game = NewWordsGame(value, m.difficulty, m.complexity, m.heatmap)
 				}
 				m.state = StatePlaying
 				m.customInput = ""
@@ -449,9 +453,7 @@ func (m model) View() string {
 	case StateStats:
 		return RenderStats(NewStatistics(m.leaderboard), m.width, m.height, m.wantToQuit)
 	case StateHeatmap:
-		if m.game != nil {
-			return RenderHeatmap(m.game.heatmap, m.width, m.height, m.wantToQuit)
-		}
+		return RenderHeatmap(m.heatmap, m.width, m.height, m.wantToQuit)
 	case StateCustomWordList:
 		return RenderCustomWordList(m.wordListManager, m.currentWordList, m.width, m.height, m.wantToQuit)
 	case StateTimeSelect:
