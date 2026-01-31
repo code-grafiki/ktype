@@ -149,13 +149,13 @@ All data is stored locally in `~/.config/ktype/`:
 
 ```bash
 # Build the application
-go build -o ktype .
+go build -o ktype ./cmd/ktype
 
 # Run the application
-go run .
+go run ./cmd/ktype
 
 # Build for release (with optimizations)
-go build -ldflags "-s -w" -o ktype .
+go build -ldflags "-s -w" -o ktype ./cmd/ktype
 ```
 
 ### Testing
@@ -188,17 +188,39 @@ go mod tidy
 
 ```
 ktype/
-├── main.go           # Application entry point
-├── game.go           # Core game logic and state
-├── ui.go             # UI rendering and styling
-├── leaderboard.go    # Score persistence
-├── statistics.go     # Stats tracking
-├── heatmap.go        # Typing heatmap
-├── challenges.go     # Daily challenges
-├── config.go         # Configuration management
-├── wordlist.go       # Custom word lists
-├── words.go          # Word lists and generation
-└── *_test.go         # Test files
+├── cmd/ktype/
+│   └── main.go              # Application entry point
+├── internal/
+│   ├── app/
+│   │   ├── model.go         # Bubble Tea model
+│   │   ├── update.go        # Event handlers
+│   │   ├── view.go          # View rendering
+│   │   └── commands.go      # Timer commands
+│   ├── game/
+│   │   ├── types.go         # Game types and constants
+│   │   ├── game.go          # Game logic
+│   │   └── game_test.go
+│   ├── storage/
+│   │   ├── leaderboard.go   # Score persistence
+│   │   ├── config.go        # Configuration
+│   │   ├── heatmap.go       # Typing heatmap
+│   │   ├── challenges.go    # Daily challenges
+│   │   ├── statistics.go    # Statistics tracking
+│   │   ├── wordlist.go      # Custom word lists
+│   │   └── *_test.go
+│   ├── ui/
+│   │   ├── styles.go        # Lipgloss styles
+│   │   ├── menu.go          # Menu screens
+│   │   ├── game.go          # Game screen
+│   │   └── stats.go         # Stats/challenges screens
+│   └── words/
+│       ├── types.go         # Difficulty/complexity types
+│       ├── lists.go         # Word lists
+│       ├── generator.go     # Word generation
+│       └── *_test.go
+├── go.mod
+├── go.sum
+└── README.md
 ```
 
 ## Dependencies
