@@ -96,6 +96,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleComplexitySelectKey(msg)
 	case StateStats:
 		return m.handleStatsKey(msg)
+	case StateHeatmap:
+		return m.handleHeatmapKey(msg)
 	case StateTimeSelect:
 		return m.handleTimeSelectKey(msg)
 	case StateWordsSelect:
@@ -138,6 +140,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "s":
 		m.state = StateStats
+		return m, nil
+	case "h":
+		m.state = StateHeatmap
 		return m, nil
 	case "esc":
 		if m.wantToQuit {
@@ -200,6 +205,20 @@ func (m model) handleStatsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.state = StateMenu
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m model) handleHeatmapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	case "r":
+		if m.game != nil && m.game.heatmap != nil {
+			m.game.heatmap.Clear()
+		}
 		return m, nil
 	}
 	return m, nil
@@ -390,6 +409,10 @@ func (m model) View() string {
 		return RenderComplexitySelect(m.complexity, m.width, m.height, m.wantToQuit)
 	case StateStats:
 		return RenderStats(NewStatistics(m.leaderboard), m.width, m.height, m.wantToQuit)
+	case StateHeatmap:
+		if m.game != nil {
+			return RenderHeatmap(m.game.heatmap, m.width, m.height, m.wantToQuit)
+		}
 	case StateTimeSelect:
 		return RenderTimeSelect(m.leaderboard, m.width, m.height, m.wantToQuit)
 	case StateWordsSelect:

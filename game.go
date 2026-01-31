@@ -18,6 +18,7 @@ const (
 	StateDifficultySelect           // Choose difficulty
 	StateComplexitySelect           // Choose word complexity
 	StateStats                      // Statistics dashboard
+	StateHeatmap                    // Typing heatmap
 	StatePlaying
 	StateFinished
 )
@@ -50,6 +51,8 @@ type Game struct {
 	State       GameState
 	TotalChars  int // Total characters typed
 	ErrorChars  int // Characters typed incorrectly
+
+	heatmap *Heatmap // Track keystroke errors for heatmap
 }
 
 // NewTimedGame creates a new timed game
@@ -64,6 +67,7 @@ func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity Word
 		Difficulty: difficulty,
 		Complexity: complexity,
 		State:      StatePlaying,
+		heatmap:    NewHeatmap(),
 	}
 }
 
@@ -79,6 +83,7 @@ func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexit
 		Difficulty:  difficulty,
 		Complexity:  complexity,
 		State:       StatePlaying,
+		heatmap:     NewHeatmap(),
 	}
 }
 
@@ -93,6 +98,7 @@ func NewZenGame(difficulty Difficulty, complexity WordComplexity) *Game {
 		Difficulty: difficulty,
 		Complexity: complexity,
 		State:      StatePlaying,
+		heatmap:    NewHeatmap(),
 	}
 }
 
@@ -177,18 +183,31 @@ func (g *Game) HandleChar(char rune) {
 	// Start timer on first keystroke
 	g.Start()
 
-	g.CurrentInput += string(char)
+	charStr := string(char)
+	g.CurrentInput += charStr
 	g.TotalChars++
 
 	// Check if current character is correct
 	currentWord := g.Words[g.WordIndex]
 	inputLen := len(g.CurrentInput)
+	isCorrect := true
+
 	if inputLen <= len(currentWord) {
 		if g.CurrentInput[inputLen-1] != currentWord[inputLen-1] {
 			g.ErrorChars++
+			isCorrect = false
 		}
 	} else {
 		g.ErrorChars++ // Typed more chars than the word has
+		isCorrect = false
+	}
+
+	// Track in heatmap
+	if g.heatmap != nil {
+		g.heatmap.RecordHit(charStr)
+		if !isCorrect {
+			g.heatmap.RecordError(charStr)
+		}
 	}
 }
 

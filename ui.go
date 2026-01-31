@@ -148,6 +148,12 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("s") + subtleStyle.Render(" → view statistics\n"))
 
+	// Heatmap
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("analysis:"))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("h") + subtleStyle.Render(" → typing heatmap\n"))
+
 	// Exit prompt
 	s.WriteString("\n")
 	var help string
@@ -714,4 +720,145 @@ func renderBar(value, max, width int) string {
 		Render(strings.Repeat("█", filled)) +
 		lipgloss.NewStyle().Foreground(lipgloss.Color("#646669")).
 			Render(strings.Repeat("░", width-filled))
+}
+
+// RenderHeatmap renders the typing heatmap visualization
+func RenderHeatmap(hm *Heatmap, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("typing heatmap")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	if hm.GetTotalKeystrokes() == 0 {
+		s.WriteString(subtleStyle.Render("no data yet - type some words to see your heatmap"))
+		s.WriteString("\n\n")
+	} else {
+		// Overall stats
+		s.WriteString(subtleStyle.Render("overall:"))
+		s.WriteString("\n")
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", hm.GetTotalKeystrokes())),
+			subtleStyle.Render("total keystrokes")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", hm.GetTotalErrors())),
+			subtleStyle.Render("total errors")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			accuracyStyle.Render(fmt.Sprintf("%.1f%%", hm.GetOverallAccuracy())),
+			subtleStyle.Render("accuracy")))
+		s.WriteString("\n")
+
+		// Top error keys
+		topErrors := hm.GetTopErrors(5)
+		if len(topErrors) > 0 {
+			s.WriteString(subtleStyle.Render("keys with most errors:"))
+			s.WriteString("\n")
+			for _, stat := range topErrors {
+				errorRate := stat.ErrorRate()
+				level := GetErrorHeatLevel(errorRate)
+				color := GetHeatColor(level)
+				keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Bold(true)
+
+				s.WriteString(fmt.Sprintf("   %s %s %s\n",
+					keyStyle.Render(fmt.Sprintf("[%s]", stat.Key)),
+					subtleStyle.Render(fmt.Sprintf("%.1f%% error rate (%d/%d)", errorRate, stat.ErrorCount, stat.TotalHits)),
+					renderBar(int(errorRate), 100, 10)))
+			}
+			s.WriteString("\n")
+		}
+
+		// Most used keys
+		mostUsed := hm.GetMostUsed(5)
+		if len(mostUsed) > 0 {
+			s.WriteString(subtleStyle.Render("most used keys:"))
+			s.WriteString("\n")
+			for _, stat := range mostUsed {
+				s.WriteString(fmt.Sprintf("   %s %s %s\n",
+					wpmStyle.Render(fmt.Sprintf("[%s]", stat.Key)),
+					subtleStyle.Render(fmt.Sprintf("%d hits", stat.TotalHits)),
+					renderBar(stat.TotalHits, mostUsed[0].TotalHits, 10)))
+			}
+			s.WriteString("\n")
+		}
+
+		// Keyboard heatmap visualization
+		s.WriteString(subtleStyle.Render("keyboard layout (error heat):"))
+		s.WriteString("\n\n")
+
+		keyboard := hm.GetHeatmapData()
+
+		// Numbers row
+		s.WriteString(subtleStyle.Render("  numbers: "))
+		for _, stat := range keyboard.Numbers {
+			errorRate := stat.ErrorRate()
+			level := GetErrorHeatLevel(errorRate)
+			color := GetHeatColor(level)
+			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+			s.WriteString(keyStyle.Render(fmt.Sprintf(" %s ", stat.Key)))
+		}
+		s.WriteString("\n\n")
+
+		// Top row (QWERTY)
+		s.WriteString(subtleStyle.Render("  top:     "))
+		for _, stat := range keyboard.TopRow {
+			errorRate := stat.ErrorRate()
+			level := GetErrorHeatLevel(errorRate)
+			color := GetHeatColor(level)
+			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+			s.WriteString(keyStyle.Render(fmt.Sprintf(" %s ", stat.Key)))
+		}
+		s.WriteString("\n\n")
+
+		// Home row
+		s.WriteString(subtleStyle.Render("  home:    "))
+		for _, stat := range keyboard.HomeRow {
+			errorRate := stat.ErrorRate()
+			level := GetErrorHeatLevel(errorRate)
+			color := GetHeatColor(level)
+			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+			s.WriteString(keyStyle.Render(fmt.Sprintf(" %s ", stat.Key)))
+		}
+		s.WriteString("\n\n")
+
+		// Bottom row
+		s.WriteString(subtleStyle.Render("  bottom:  "))
+		for _, stat := range keyboard.BottomRow {
+			errorRate := stat.ErrorRate()
+			level := GetErrorHeatLevel(errorRate)
+			color := GetHeatColor(level)
+			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+			s.WriteString(keyStyle.Render(fmt.Sprintf(" %s ", stat.Key)))
+		}
+		s.WriteString("\n\n")
+
+		// Legend
+		s.WriteString(subtleStyle.Render("legend: "))
+		legend := []struct {
+			color string
+			label string
+		}{
+			{"#646669", "no errors"},
+			{"#98c379", "low (<5%)"},
+			{"#e2b714", "medium (5-15%)"},
+			{"#d19a66", "high (15-30%)"},
+			{"#ca4754", "very high (>30%)"},
+		}
+		for _, l := range legend {
+			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(l.color))
+			s.WriteString(keyStyle.Render("█") + subtleStyle.Render(" "+l.label+"  "))
+		}
+		s.WriteString("\n")
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back • r to reset")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
 }
