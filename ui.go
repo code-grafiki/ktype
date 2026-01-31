@@ -133,7 +133,14 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	// Difficulty
 	s.WriteString("\n")
 	s.WriteString(subtleStyle.Render("difficulty: ") + wpmStyle.Render(difficulty.String()))
+	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("d") + subtleStyle.Render(" → change difficulty\n"))
+
+	// Statistics
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("statistics:"))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("s") + subtleStyle.Render(" → view statistics\n"))
 
 	// Exit prompt
 	s.WriteString("\n")
@@ -530,4 +537,129 @@ func justifyLine(styledParts []string, rawWords []string, maxWidth int) string {
 	}
 
 	return result.String()
+}
+
+// RenderStats renders the statistics dashboard
+func RenderStats(stats *Statistics, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("statistics")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	// Summary statistics
+	summary := stats.GetSummary()
+	if summary.TotalTests == 0 {
+		s.WriteString(subtleStyle.Render("no data yet - complete some tests to see statistics"))
+		s.WriteString("\n\n")
+	} else {
+		// Overall stats
+		s.WriteString(subtleStyle.Render("overall:"))
+		s.WriteString("\n")
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			wpmStyle.Render(fmt.Sprintf("%.1f", summary.AverageWPM)),
+			subtleStyle.Render("avg wpm")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			accuracyStyle.Render(fmt.Sprintf("%.1f%%", summary.AverageAccuracy)),
+			subtleStyle.Render("avg accuracy")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			wpmStyle.Render(fmt.Sprintf("%d", summary.BestWPM)),
+			subtleStyle.Render("best wpm")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", summary.TotalTests)),
+			subtleStyle.Render("total tests")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", summary.RecentTests)),
+			subtleStyle.Render("tests this week")))
+		s.WriteString("\n")
+
+		// Recent activity
+		recent := stats.GetRecentPerformance()
+		s.WriteString(subtleStyle.Render("recent activity:"))
+		s.WriteString("\n")
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", recent.Today)),
+			subtleStyle.Render("tests today")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", recent.ThisWeek)),
+			subtleStyle.Render("tests this week")))
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(fmt.Sprintf("%d", recent.ThisMonth)),
+			subtleStyle.Render("tests this month")))
+		if recent.Today > 0 {
+			s.WriteString(fmt.Sprintf("   %s %s\n",
+				wpmStyle.Render(fmt.Sprintf("%.1f", recent.AverageWPMToday)),
+				subtleStyle.Render("avg wpm today")))
+		}
+		s.WriteString("\n")
+
+		// Consistency metrics
+		consistency := stats.GetConsistencyMetrics()
+		s.WriteString(subtleStyle.Render("consistency:"))
+		s.WriteString("\n")
+		s.WriteString(fmt.Sprintf("   %s %s\n",
+			statsStyle.Render(consistency.ConsistencyRating),
+			subtleStyle.Render("rating")))
+		s.WriteString("\n")
+
+		// Mode statistics
+		modeStats := stats.GetModeStats()
+		if len(modeStats) > 0 {
+			s.WriteString(subtleStyle.Render("by mode:"))
+			s.WriteString("\n")
+			for _, ms := range modeStats {
+				modeLine := fmt.Sprintf("   %s: %s %s",
+					subtleStyle.Render(ms.Mode),
+					wpmStyle.Render(fmt.Sprintf("%.0f", ms.AverageWPM)),
+					subtleStyle.Render("wpm avg"))
+				s.WriteString(modeLine)
+				s.WriteString("\n")
+			}
+			s.WriteString("\n")
+		}
+
+		// WPM Distribution
+		distribution := stats.GetWPMDistribution()
+		s.WriteString(subtleStyle.Render("performance distribution:"))
+		s.WriteString("\n")
+		for _, r := range distribution {
+			if r.Count > 0 {
+				bar := renderBar(r.Count, summary.TotalTests, 20)
+				s.WriteString(fmt.Sprintf("   %s: %s %s\n",
+					subtleStyle.Render(r.Label),
+					bar,
+					statsStyle.Render(fmt.Sprintf("%d", r.Count))))
+			}
+		}
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// renderBar creates a simple ASCII bar chart
+func renderBar(value, max, width int) string {
+	if max == 0 {
+		return strings.Repeat("░", width)
+	}
+	filled := int(float64(value) / float64(max) * float64(width))
+	if filled > width {
+		filled = width
+	}
+	if filled < 0 {
+		filled = 0
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#5eacd3")).
+		Render(strings.Repeat("█", filled)) +
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#646669")).
+			Render(strings.Repeat("░", width-filled))
 }

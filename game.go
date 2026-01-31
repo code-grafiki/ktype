@@ -16,6 +16,7 @@ const (
 	StateWordsSelect                // Choose word count
 	StateCustomInput                // Custom input
 	StateDifficultySelect           // Choose difficulty
+	StateStats                      // Statistics dashboard
 	StatePlaying
 	StateFinished
 )

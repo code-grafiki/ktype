@@ -90,6 +90,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleMenuKey(msg)
 	case StateDifficultySelect:
 		return m.handleDifficultySelectKey(msg)
+	case StateStats:
+		return m.handleStatsKey(msg)
 	case StateTimeSelect:
 		return m.handleTimeSelectKey(msg)
 	case StateWordsSelect:
@@ -127,6 +129,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		m.state = StateDifficultySelect
 		return m, nil
+	case "s":
+		m.state = StateStats
+		return m, nil
 	case "esc":
 		if m.wantToQuit {
 			return m, tea.Quit
@@ -152,6 +157,15 @@ func (m model) handleDifficultySelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.difficulty = DifficultyHard
 		m.state = StateMenu
 		return m, nil
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m model) handleStatsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
 	case "esc":
 		m.state = StateMenu
 		return m, nil
@@ -340,6 +354,8 @@ func (m model) View() string {
 		return RenderMainMenu(m.leaderboard, m.width, m.height, m.wantToQuit, m.difficulty)
 	case StateDifficultySelect:
 		return RenderDifficultySelect(m.difficulty, m.width, m.height, m.wantToQuit)
+	case StateStats:
+		return RenderStats(NewStatistics(m.leaderboard), m.width, m.height, m.wantToQuit)
 	case StateTimeSelect:
 		return RenderTimeSelect(m.leaderboard, m.width, m.height, m.wantToQuit)
 	case StateWordsSelect:
