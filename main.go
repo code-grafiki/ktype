@@ -37,6 +37,9 @@ type model struct {
 
 	// For configuration
 	configManager *ConfigManager
+
+	// Daily challenges
+	challenges *DailyChallenges
 }
 
 func initialModel() model {
@@ -51,6 +54,7 @@ func initialModel() model {
 		currentWordList: "",
 		heatmap:         NewHeatmap(),
 		configManager:   NewConfigManager(),
+		challenges:      NewDailyChallenges(),
 	}
 }
 
@@ -80,6 +84,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = StateFinished
 				// Save score to leaderboard
 				m.leaderboard.AddScore(m.game.WPM(), m.game.Accuracy(), m.game.ModeString())
+				// Update challenges progress
+				m.challenges.UpdateProgress(m.game.WPM(), m.game.Accuracy(), len(m.game.TypedWords))
 				return m, nil
 			}
 			return m, tickCmd()
@@ -130,6 +136,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePlayingKey(msg)
 	case StateFinished:
 		return m.handleFinishedKey(msg)
+	case StateChallenges:
+		return m.handleChallengesKey(msg)
 	}
 	return m, nil
 }
@@ -168,6 +176,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "l":
 		m.state = StateCustomWordList
+		return m, nil
+	case "v":
+		m.state = StateChallenges
 		return m, nil
 	case ",":
 		m.state = StateSettings
@@ -455,6 +466,15 @@ func (m model) handleFinishedKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) handleChallengesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m model) handleSettingsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
@@ -589,6 +609,8 @@ func (m model) View() string {
 			isPB := m.leaderboard.IsPB(m.game.WPM(), m.game.ModeString())
 			return RenderFinished(m.game, m.width, m.height, isPB, m.wantToQuit)
 		}
+	case StateChallenges:
+		return RenderChallenges(m.challenges, m.width, m.height, m.wantToQuit)
 	}
 	return ""
 }

@@ -23,6 +23,7 @@ const (
 	StateSettings                   // Settings menu
 	StateCursorSelect               // Cursor type selection
 	StateColorSelect                // Accent color selection
+	StateChallenges                 // Daily challenges
 	StatePlaying
 	StateFinished
 )

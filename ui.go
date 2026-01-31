@@ -161,6 +161,12 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("l") + subtleStyle.Render(" → custom word lists\n"))
 
+	// Daily Challenges
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("daily challenges:"))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("v") + subtleStyle.Render(" → view challenges\n"))
+
 	// Settings
 	s.WriteString("\n")
 	s.WriteString(subtleStyle.Render("settings:"))
@@ -1253,6 +1259,74 @@ func RenderColorSelect(cm *ConfigManager, width, height int, wantToQuit bool) st
 		help = errorStyle.Render("press esc again to go back")
 	} else {
 		help = helpStyle.Render("esc to go back • enter to confirm")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderChallenges renders the daily challenges screen
+func RenderChallenges(dc *DailyChallenges, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("daily challenges")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	challenges := dc.GetTodaysChallenges()
+
+	if len(challenges) == 0 {
+		s.WriteString(subtleStyle.Render("no challenges available"))
+	} else {
+		completed := dc.GetCompletedCount()
+		total := dc.GetTotalCount()
+
+		s.WriteString(subtleStyle.Render(fmt.Sprintf("progress: %d/%d completed", completed, total)))
+		s.WriteString("\n\n")
+
+		for i, c := range challenges {
+			status := ""
+			if c.Completed {
+				status = accuracyStyle.Render(" ✓ COMPLETED")
+			} else {
+				progress := float64(c.Progress) / float64(c.Target) * 100
+				if progress > 0 {
+					status = subtleStyle.Render(fmt.Sprintf(" (%.0f%%)", progress))
+				}
+			}
+
+			s.WriteString(fmt.Sprintf("%s %s%s\n",
+				wpmStyle.Render(fmt.Sprintf("%d.", i+1)),
+				subtleStyle.Render(c.Title),
+				status))
+
+			s.WriteString(fmt.Sprintf("   %s\n", subtleStyle.Render(c.Description)))
+
+			if !c.Completed {
+				s.WriteString(fmt.Sprintf("   %s: %s/%d %s\n",
+					subtleStyle.Render("progress"),
+					statsStyle.Render(fmt.Sprintf("%d", c.Progress)),
+					c.Target,
+					subtleStyle.Render("("+c.Reward+")")))
+			}
+
+			s.WriteString("\n")
+		}
+
+		if dc.HasCompletedAll() {
+			s.WriteString("\n")
+			s.WriteString(accuracyStyle.Render("🎉 All challenges completed today!"))
+			s.WriteString("\n")
+		}
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back")
 	}
 	s.WriteString(help)
 
