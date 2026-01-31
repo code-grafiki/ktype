@@ -53,7 +53,10 @@ func (lb *Leaderboard) load() {
 		return // File doesn't exist yet
 	}
 
-	json.Unmarshal(data, lb)
+	if err := json.Unmarshal(data, lb); err != nil {
+		// Corrupt file - start fresh
+		lb.Scores = []Score{}
+	}
 }
 
 // save writes scores to file

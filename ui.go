@@ -83,7 +83,7 @@ var (
 )
 
 // RenderMainMenu renders the main menu with quick start options
-func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string {
+func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficulty Difficulty) string {
 	var s strings.Builder
 
 	title := titleStyle.Render("ktype")
@@ -129,6 +129,11 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool) string 
 	for _, opt := range moreModes {
 		s.WriteString("   " + opt + "\n")
 	}
+
+	// Difficulty
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("difficulty: ") + wpmStyle.Render(difficulty.String()))
+	s.WriteString("   " + wpmStyle.Render("d") + subtleStyle.Render(" → change difficulty\n"))
 
 	// Exit prompt
 	s.WriteString("\n")
@@ -219,6 +224,51 @@ func RenderWordsSelect(lb *Leaderboard, width, height int, wantToQuit bool) stri
 		s.WriteString(fmt.Sprintf("   %s %s%s\n", wpmStyle.Render(c.key), subtleStyle.Render("→ "+c.label), pbText))
 	}
 	s.WriteString("   " + wpmStyle.Render("c") + subtleStyle.Render(" → custom\n"))
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to quit")
+	} else {
+		help = helpStyle.Render("esc: back")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderDifficultySelect renders the difficulty selection screen
+func RenderDifficultySelect(currentDifficulty Difficulty, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("difficulty")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("select difficulty:"))
+	s.WriteString("\n\n")
+
+	options := []struct {
+		key        string
+		label      string
+		difficulty Difficulty
+		desc       string
+	}{
+		{"1", "easy", DifficultyEasy, "2-4 letter words"},
+		{"2", "medium", DifficultyMedium, "5-7 letter words"},
+		{"3", "hard", DifficultyHard, "8+ letter words"},
+	}
+
+	for _, opt := range options {
+		keyStyle := wpmStyle
+		labelStyle := subtleStyle
+		if opt.difficulty == currentDifficulty {
+			keyStyle = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+			labelStyle = lipgloss.NewStyle().Foreground(colorText)
+		}
+		s.WriteString(fmt.Sprintf("   %s %s (%s)\n", keyStyle.Render(opt.key), labelStyle.Render("→ "+opt.label), opt.desc))
+	}
 
 	s.WriteString("\n")
 	var help string

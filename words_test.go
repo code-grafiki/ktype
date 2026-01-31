@@ -1,0 +1,245 @@
+package main
+
+import (
+	"testing"
+)
+
+func TestGetRandomWords(t *testing.T) {
+	tests := []struct {
+		name     string
+		n        int
+		expected int
+	}{
+		{"zero words", 0, 0},
+		{"one word", 1, 1},
+		{"ten words", 10, 10},
+		{"fifty words", 50, 50},
+		{"hundred words", 100, 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			words := getRandomWords(tt.n, DifficultyMedium)
+
+			if len(words) != tt.expected {
+				t.Errorf("getRandomWords(%d) returned %d words, expected %d",
+					tt.n, len(words), tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetRandomWordsContent(t *testing.T) {
+	// Test all difficulty levels
+	difficulties := []Difficulty{DifficultyEasy, DifficultyMedium, DifficultyHard}
+	wordLists := [][]string{easyWords, mediumWords, hardWords}
+
+	for idx, difficulty := range difficulties {
+		words := getRandomWords(50, difficulty)
+		wordSet := make(map[string]bool)
+		for _, word := range wordLists[idx] {
+			wordSet[word] = true
+		}
+
+		for _, word := range words {
+			if !wordSet[word] {
+				t.Errorf("Word %q is not in the %s word list", word, difficulty.String())
+			}
+		}
+	}
+}
+
+func TestGetRandomWordsRandomness(t *testing.T) {
+	// Get two sets of random words
+	words1 := getRandomWords(20, DifficultyMedium)
+	words2 := getRandomWords(20, DifficultyMedium)
+
+	// They should be different (with very high probability)
+	allSame := true
+	for i := 0; i < len(words1) && i < len(words2); i++ {
+		if words1[i] != words2[i] {
+			allSame = false
+			break
+		}
+	}
+
+	if allSame {
+		t.Error("Two calls to getRandomWords returned identical results - randomness may not be working")
+	}
+}
+
+func TestGetRandomWordsNoConsecutiveDuplicates(t *testing.T) {
+	// Generate a large number of words to check for consecutive duplicates
+	words := getRandomWords(200, DifficultyMedium)
+
+	consecutiveDuplicates := 0
+	for i := 1; i < len(words); i++ {
+		if words[i] == words[i-1] {
+			consecutiveDuplicates++
+			t.Errorf("Consecutive duplicate found at positions %d and %d: %q",
+				i-1, i, words[i])
+		}
+	}
+
+	if consecutiveDuplicates > 0 {
+		t.Errorf("Found %d consecutive duplicate pairs", consecutiveDuplicates)
+	}
+}
+
+func TestWordListsNotEmpty(t *testing.T) {
+	lists := []struct {
+		name  string
+		words []string
+	}{
+		{"easy", easyWords},
+		{"medium", mediumWords},
+		{"hard", hardWords},
+	}
+
+	for _, list := range lists {
+		if len(list.words) == 0 {
+			t.Errorf("%s word list is empty", list.name)
+		}
+
+		if len(list.words) < 50 {
+			t.Errorf("%s word list has only %d words, expected at least 50", list.name, len(list.words))
+		}
+	}
+}
+
+func TestWordListsNoEmptyStrings(t *testing.T) {
+	lists := [][]string{easyWords, mediumWords, hardWords}
+	listNames := []string{"easy", "medium", "hard"}
+
+	for idx, wordList := range lists {
+		for i, word := range wordList {
+			if word == "" {
+				t.Errorf("%s word list[%d] is empty string", listNames[idx], i)
+			}
+		}
+	}
+}
+
+func TestWordListsNoDuplicates(t *testing.T) {
+	lists := [][]string{easyWords, mediumWords, hardWords}
+	listNames := []string{"easy", "medium", "hard"}
+
+	for idx, wordList := range lists {
+		seen := make(map[string]int)
+		duplicates := []string{}
+
+		for i, word := range wordList {
+			if prevIdx, exists := seen[word]; exists {
+				duplicates = append(duplicates, word)
+				t.Errorf("Duplicate word %q found in %s list at indices %d and %d", word, listNames[idx], prevIdx, i)
+			}
+			seen[word] = i
+		}
+
+		if len(duplicates) > 0 {
+			t.Errorf("Found %d duplicate words in %s list: %v", len(duplicates), listNames[idx], duplicates)
+		}
+	}
+}
+
+func TestWordListsMostlyLowercase(t *testing.T) {
+	lists := [][]string{easyWords, mediumWords, hardWords}
+	listNames := []string{"easy", "medium", "hard"}
+
+	for idx, wordList := range lists {
+		// Count words with uppercase letters (only "I" should be allowed)
+		uppercaseCount := 0
+		for i, word := range wordList {
+			for _, r := range word {
+				if r >= 'A' && r <= 'Z' {
+					uppercaseCount++
+					// Only "I" is allowed to be uppercase (pronoun)
+					if word != "I" {
+						t.Errorf("%s wordList[%d] = %q contains unexpected uppercase letter", listNames[idx], i, word)
+					}
+					break
+				}
+			}
+		}
+		// Should have exactly one uppercase word: "I" (only in easy list)
+		if listNames[idx] == "easy" && uppercaseCount > 1 {
+			t.Errorf("Expected at most 1 uppercase word (I) in easy list, found %d", uppercaseCount)
+		}
+	}
+}
+
+func TestWordListsNoWhitespace(t *testing.T) {
+	lists := [][]string{easyWords, mediumWords, hardWords}
+	listNames := []string{"easy", "medium", "hard"}
+
+	for idx, wordList := range lists {
+		for i, word := range wordList {
+			for _, r := range word {
+				if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+					t.Errorf("%s wordList[%d] = %q contains whitespace", listNames[idx], i, word)
+					break
+				}
+			}
+		}
+	}
+}
+
+func TestDifficultyList(t *testing.T) {
+	// Check that DifficultyList returns the correct lists by checking lengths
+	easy := DifficultyList(DifficultyEasy)
+	medium := DifficultyList(DifficultyMedium)
+	hard := DifficultyList(DifficultyHard)
+
+	if len(easy) == 0 {
+		t.Error("DifficultyList(DifficultyEasy) returned empty list")
+	}
+	if len(medium) == 0 {
+		t.Error("DifficultyList(DifficultyMedium) returned empty list")
+	}
+	if len(hard) == 0 {
+		t.Error("DifficultyList(DifficultyHard) returned empty list")
+	}
+
+	// Check they return different lists (different lengths or first elements)
+	if len(easy) == len(medium) && len(easy) > 0 && easy[0] == medium[0] {
+		t.Error("DifficultyList should return different lists for different difficulties")
+	}
+}
+
+func TestGetDifficultyFromString(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected Difficulty
+	}{
+		{"easy", DifficultyEasy},
+		{"medium", DifficultyMedium},
+		{"hard", DifficultyHard},
+		{"unknown", DifficultyMedium}, // default
+	}
+
+	for _, tt := range tests {
+		result := getDifficultyFromString(tt.input)
+		if result != tt.expected {
+			t.Errorf("getDifficultyFromString(%q) = %v, expected %v", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestDifficultyString(t *testing.T) {
+	tests := []struct {
+		difficulty Difficulty
+		expected   string
+	}{
+		{DifficultyEasy, "easy"},
+		{DifficultyMedium, "medium"},
+		{DifficultyHard, "hard"},
+		{Difficulty(99), "medium"}, // default for unknown
+	}
+
+	for _, tt := range tests {
+		result := tt.difficulty.String()
+		if result != tt.expected {
+			t.Errorf("Difficulty(%d).String() = %q, expected %q", tt.difficulty, result, tt.expected)
+		}
+	}
+}

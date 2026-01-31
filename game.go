@@ -10,11 +10,12 @@ import (
 type GameState int
 
 const (
-	StateMenu        GameState = iota
-	StateModeSelect            // Choose timed vs words
-	StateTimeSelect            // Choose duration
-	StateWordsSelect           // Choose word count
-	StateCustomInput           // Custom input
+	StateMenu             GameState = iota
+	StateModeSelect                 // Choose timed vs words
+	StateTimeSelect                 // Choose duration
+	StateWordsSelect                // Choose word count
+	StateCustomInput                // Custom input
+	StateDifficultySelect           // Choose difficulty
 	StatePlaying
 	StateFinished
 )
@@ -41,6 +42,7 @@ type Game struct {
 	Elapsed   time.Duration
 
 	Mode        GameMode
+	Difficulty  Difficulty
 	TargetWords int // For words mode
 	State       GameState
 	TotalChars  int // Total characters typed
@@ -48,39 +50,42 @@ type Game struct {
 }
 
 // NewTimedGame creates a new timed game
-func NewTimedGame(duration time.Duration) *Game {
-	words := getRandomWords(200) // Get enough words for any test
+func NewTimedGame(duration time.Duration, difficulty Difficulty) *Game {
+	words := getRandomWords(200, difficulty) // Get enough words for any test
 	return &Game{
 		Words:      words,
 		Correct:    make([]bool, 0),
 		TypedWords: make([]string, 0),
 		Duration:   duration,
 		Mode:       ModeTimed,
+		Difficulty: difficulty,
 		State:      StatePlaying,
 	}
 }
 
 // NewWordsGame creates a new word-count game
-func NewWordsGame(wordCount int) *Game {
-	words := getRandomWords(wordCount + 10) // A few extra just in case
+func NewWordsGame(wordCount int, difficulty Difficulty) *Game {
+	words := getRandomWords(wordCount+10, difficulty) // A few extra just in case
 	return &Game{
 		Words:       words,
 		Correct:     make([]bool, 0),
 		TypedWords:  make([]string, 0),
 		TargetWords: wordCount,
 		Mode:        ModeWords,
+		Difficulty:  difficulty,
 		State:       StatePlaying,
 	}
 }
 
 // NewZenGame creates a new zen mode game (unlimited typing)
-func NewZenGame() *Game {
-	words := getRandomWords(1000) // Large pool for zen mode
+func NewZenGame(difficulty Difficulty) *Game {
+	words := getRandomWords(1000, difficulty) // Large pool for zen mode
 	return &Game{
 		Words:      words,
 		Correct:    make([]bool, 0),
 		TypedWords: make([]string, 0),
 		Mode:       ModeZen,
+		Difficulty: difficulty,
 		State:      StatePlaying,
 	}
 }
@@ -205,7 +210,7 @@ func (g *Game) HandleSpace() {
 		// For zen mode, generate more words if we run out
 		if g.Mode == ModeZen {
 			// Add more words to the pool
-			newWords := getRandomWords(100)
+			newWords := getRandomWords(100, g.Difficulty)
 			g.Words = append(g.Words, newWords...)
 		} else {
 			g.State = StateFinished
