@@ -19,6 +19,7 @@ const (
 	StateComplexitySelect           // Choose word complexity
 	StateStats                      // Statistics dashboard
 	StateHeatmap                    // Typing heatmap
+	StateCustomWordList             // Custom word lists
 	StatePlaying
 	StateFinished
 )

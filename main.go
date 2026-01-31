@@ -27,16 +27,22 @@ type model struct {
 	inputMode   string         // "time" or "words"
 	difficulty  Difficulty     // Current difficulty level
 	complexity  WordComplexity // Current complexity level (normal, punctuation, numbers, full)
+
+	// For custom word lists
+	wordListManager *WordListManager
+	currentWordList string // name of selected word list
 }
 
 func initialModel() model {
 	return model{
-		state:       StateMenu,
-		width:       80,
-		height:      24,
-		leaderboard: NewLeaderboard(),
-		difficulty:  DifficultyMedium,
-		complexity:  ComplexityNormal,
+		state:           StateMenu,
+		width:           80,
+		height:          24,
+		leaderboard:     NewLeaderboard(),
+		difficulty:      DifficultyMedium,
+		complexity:      ComplexityNormal,
+		wordListManager: NewWordListManager(),
+		currentWordList: "",
 	}
 }
 
@@ -98,6 +104,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleStatsKey(msg)
 	case StateHeatmap:
 		return m.handleHeatmapKey(msg)
+	case StateCustomWordList:
+		return m.handleCustomWordListKey(msg)
 	case StateTimeSelect:
 		return m.handleTimeSelectKey(msg)
 	case StateWordsSelect:
@@ -143,6 +151,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "h":
 		m.state = StateHeatmap
+		return m, nil
+	case "l":
+		m.state = StateCustomWordList
 		return m, nil
 	case "esc":
 		if m.wantToQuit {
@@ -219,6 +230,34 @@ func (m model) handleHeatmapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.game != nil && m.game.heatmap != nil {
 			m.game.heatmap.Clear()
 		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m model) handleCustomWordListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		// Set current word list based on selection
+		index, _ := strconv.Atoi(msg.String())
+		lists := m.wordListManager.ListNames()
+		if index > 0 && index <= len(lists) {
+			m.currentWordList = lists[index-1]
+		}
+		return m, nil
+	case "d":
+		// Delete the selected word list
+		if m.currentWordList != "" {
+			m.wordListManager.DeleteList(m.currentWordList)
+			m.currentWordList = ""
+		}
+		return m, nil
+	case "n":
+		// Prompt for new word list creation
+		fmt.Println("New word list creation - press enter to continue")
 		return m, nil
 	}
 	return m, nil
@@ -413,6 +452,8 @@ func (m model) View() string {
 		if m.game != nil {
 			return RenderHeatmap(m.game.heatmap, m.width, m.height, m.wantToQuit)
 		}
+	case StateCustomWordList:
+		return RenderCustomWordList(m.wordListManager, m.currentWordList, m.width, m.height, m.wantToQuit)
 	case StateTimeSelect:
 		return RenderTimeSelect(m.leaderboard, m.width, m.height, m.wantToQuit)
 	case StateWordsSelect:

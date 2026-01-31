@@ -154,6 +154,12 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("h") + subtleStyle.Render(" → typing heatmap\n"))
 
+	// Custom Word Lists
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("word lists:"))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("l") + subtleStyle.Render(" → custom word lists\n"))
+
 	// Exit prompt
 	s.WriteString("\n")
 	var help string
@@ -856,6 +862,67 @@ func RenderHeatmap(hm *Heatmap, width, height int, wantToQuit bool) string {
 		help = errorStyle.Render("press esc again to go back")
 	} else {
 		help = helpStyle.Render("esc to go back • r to reset")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderCustomWordList renders the custom word list management screen
+func RenderCustomWordList(wm *WordListManager, currentList string, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("custom word lists")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	if wm.Count() == 0 {
+		s.WriteString(subtleStyle.Render("no custom word lists yet"))
+		s.WriteString("\n\n")
+		s.WriteString(subtleStyle.Render("word lists are stored in:"))
+		s.WriteString("\n")
+		s.WriteString(statsStyle.Render("~/.config/ktype/wordlists.json"))
+		s.WriteString("\n\n")
+	} else {
+		s.WriteString(subtleStyle.Render("available word lists:"))
+		s.WriteString("\n\n")
+
+		for i, list := range wm.Lists {
+			key := fmt.Sprintf("%d", i+1)
+			selected := ""
+			if list.Name == currentList {
+				selected = accuracyStyle.Render(" ✓")
+			}
+			s.WriteString(fmt.Sprintf("   %s %s%s (%d words)\n",
+				wpmStyle.Render(key),
+				subtleStyle.Render(list.Name),
+				selected,
+				len(list.Words)))
+			if list.Description != "" {
+				s.WriteString(fmt.Sprintf("      %s\n", subtleStyle.Render(list.Description)))
+			}
+		}
+
+		s.WriteString("\n")
+		if currentList != "" {
+			s.WriteString(accuracyStyle.Render(fmt.Sprintf("selected: %s", currentList)))
+			s.WriteString("\n\n")
+		}
+
+		s.WriteString(subtleStyle.Render("actions:"))
+		s.WriteString("\n")
+		s.WriteString("   " + wpmStyle.Render("1-9") + subtleStyle.Render(" → select word list\n"))
+		s.WriteString("   " + wpmStyle.Render("d") + subtleStyle.Render(" → delete selected\n"))
+		s.WriteString("   " + wpmStyle.Render("c") + subtleStyle.Render(" → clear selection\n"))
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back")
 	}
 	s.WriteString(help)
 
