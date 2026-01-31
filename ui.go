@@ -161,6 +161,12 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("l") + subtleStyle.Render(" → custom word lists\n"))
 
+	// Settings
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("settings:"))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render(",") + subtleStyle.Render(" → appearance settings\n"))
+
 	// Exit prompt
 	s.WriteString("\n")
 	var help string
@@ -356,7 +362,7 @@ func RenderComplexitySelect(currentComplexity WordComplexity, width, height int,
 }
 
 // RenderCustomInput renders the custom input screen
-func RenderCustomInput(input, mode string, width, height int) string {
+func RenderCustomInput(input, mode string, width, height int, cursorChar string) string {
 	var s strings.Builder
 
 	var prompt string
@@ -371,7 +377,7 @@ func RenderCustomInput(input, mode string, width, height int) string {
 	s.WriteString("\n\n")
 
 	// Show input with cursor
-	inputDisplay := wpmStyle.Render(input) + cursorStyle.Render("_")
+	inputDisplay := wpmStyle.Render(input) + cursorStyle.Render(cursorChar)
 	s.WriteString("        " + inputDisplay)
 	s.WriteString("\n\n")
 
@@ -391,7 +397,7 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 
 	// Build the words display (3 lines)
 	// We use a slightly smaller width for the words themselves to ensure they fit well
-	wordsLines := buildWordsLines(g, internalWidth-2, 3)
+	wordsLines := buildWordsLines(g, internalWidth-2, 3, "_")
 
 	s.WriteString("\n")
 	for _, line := range wordsLines {
@@ -502,7 +508,7 @@ func RenderFinished(g *Game, width, height int, isPB bool, wantToQuit bool) stri
 }
 
 // buildWordsLines builds 3 lines of words with proper scrolling
-func buildWordsLines(g *Game, maxWidth int, numLines int) []string {
+func buildWordsLines(g *Game, maxWidth int, numLines int, cursorChar string) []string {
 	type lineInfo struct {
 		startIdx int
 		endIdx   int
@@ -574,7 +580,7 @@ func buildWordsLines(g *Game, maxWidth int, numLines int) []string {
 				}
 			} else if wordIdx == g.WordIndex {
 				correct, errors, remaining := g.CurrentWordState()
-				cursor := cursorStyle.Render("_")
+				cursor := cursorStyle.Render(cursorChar)
 				currentWord := correctStyle.Render(correct) +
 					errorStyle.Render(errors) +
 					cursor +
@@ -1112,4 +1118,144 @@ func GetErrorStats(game *Game) (totalErrors int, topErrors []struct {
 	}
 
 	return totalErrors, result
+}
+
+// RenderSettings renders the settings menu
+func RenderSettings(cm *ConfigManager, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("settings")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("configuration options:"))
+	s.WriteString("\n\n")
+
+	s.WriteString("   " + wpmStyle.Render("1") + subtleStyle.Render(" → cursor style: ") +
+		accuracyStyle.Render(cm.GetCursorTypeName()))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("2") + subtleStyle.Render(" → accent color: ") +
+		lipgloss.NewStyle().Foreground(lipgloss.Color(cm.GetAccentColorHex())).
+			Bold(true).Render(cm.GetAccentColorName()))
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("current settings:"))
+	s.WriteString("\n")
+	s.WriteString(fmt.Sprintf("   cursor: %s\n", cm.GetCursorTypeName()))
+	s.WriteString(fmt.Sprintf("   color:  %s (%s)\n", cm.GetAccentColorName(), cm.GetAccentColorHex()))
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderCursorSelect renders the cursor type selection screen
+func RenderCursorSelect(cm *ConfigManager, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("cursor style")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("select cursor type:"))
+	s.WriteString("\n\n")
+
+	currentCursor := cm.GetCursorType()
+	cursorTypes := []struct {
+		key   string
+		name  string
+		ctype CursorType
+	}{
+		{"1", "Block", CursorBlock},
+		{"2", "Line", CursorLine},
+		{"3", "Underline", CursorUnderline},
+		{"4", "Bar", CursorBar},
+	}
+
+	for _, ct := range cursorTypes {
+		keyStyle := wpmStyle
+		labelStyle := subtleStyle
+		if ct.ctype == currentCursor {
+			keyStyle = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+			labelStyle = lipgloss.NewStyle().Foreground(colorText)
+		}
+		s.WriteString(fmt.Sprintf("   %s %s\n", keyStyle.Render(ct.key), labelStyle.Render("→ "+ct.name)))
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderColorSelect renders the accent color selection screen
+func RenderColorSelect(cm *ConfigManager, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("accent color")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("preset colors:"))
+	s.WriteString("\n\n")
+
+	colors := []struct {
+		key   string
+		name  string
+		color string
+	}{
+		{"1", "Red", "#e06c75"},
+		{"2", "Orange", "#d19a66"},
+		{"3", "Yellow", "#e5c07b"},
+		{"4", "Green", "#98c379"},
+		{"5", "Cyan", "#56b6c2"},
+		{"6", "Blue", "#61afef"},
+		{"7", "Purple", "#c678dd"},
+		{"8", "Pink", "#ff79c6"},
+		{"9", "White", "#abb2bf"},
+		{"0", "Black", "#282c34"},
+	}
+
+	currentHex := cm.GetAccentColorHex()
+
+	for _, c := range colors {
+		keyStyle := wpmStyle
+		nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(c.color))
+		if c.color == currentHex {
+			keyStyle = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+			nameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(c.color)).Bold(true)
+		}
+		s.WriteString(fmt.Sprintf("   %s %s\n", keyStyle.Render(c.key), nameStyle.Render("● "+c.name)))
+	}
+
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("or type custom hex color (e.g., #ff5733):"))
+	s.WriteString("\n\n")
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to go back")
+	} else {
+		help = helpStyle.Render("esc to go back • enter to confirm")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
 }

@@ -34,6 +34,9 @@ type model struct {
 
 	// For heatmap (persists across games)
 	heatmap *Heatmap
+
+	// For configuration
+	configManager *ConfigManager
 }
 
 func initialModel() model {
@@ -47,6 +50,7 @@ func initialModel() model {
 		wordListManager: NewWordListManager(),
 		currentWordList: "",
 		heatmap:         NewHeatmap(),
+		configManager:   NewConfigManager(),
 	}
 }
 
@@ -108,6 +112,12 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleStatsKey(msg)
 	case StateHeatmap:
 		return m.handleHeatmapKey(msg)
+	case StateSettings:
+		return m.handleSettingsKey(msg)
+	case StateCursorSelect:
+		return m.handleCursorSelectKey(msg)
+	case StateColorSelect:
+		return m.handleColorSelectKey(msg)
 	case StateCustomWordList:
 		return m.handleCustomWordListKey(msg)
 	case StateTimeSelect:
@@ -158,6 +168,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "l":
 		m.state = StateCustomWordList
+		return m, nil
+	case ",":
+		m.state = StateSettings
 		return m, nil
 	case "esc":
 		if m.wantToQuit {
@@ -442,6 +455,105 @@ func (m model) handleFinishedKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) handleSettingsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	case "1":
+		m.state = StateCursorSelect
+		return m, nil
+	case "2":
+		m.state = StateColorSelect
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m model) handleCursorSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = StateSettings
+		return m, nil
+	case "1":
+		m.configManager.SetCursorType(CursorBlock)
+		m.state = StateSettings
+		return m, nil
+	case "2":
+		m.configManager.SetCursorType(CursorLine)
+		m.state = StateSettings
+		return m, nil
+	case "3":
+		m.configManager.SetCursorType(CursorUnderline)
+		m.state = StateSettings
+		return m, nil
+	case "4":
+		m.configManager.SetCursorType(CursorBar)
+		m.state = StateSettings
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m model) handleColorSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.customInput = ""
+		m.state = StateSettings
+		return m, nil
+	case tea.KeyEnter:
+		if len(m.customInput) > 0 {
+			// Check if it's a preset number
+			switch m.customInput {
+			case "1":
+				m.configManager.SetAccentColor(ColorRed)
+			case "2":
+				m.configManager.SetAccentColor(ColorOrange)
+			case "3":
+				m.configManager.SetAccentColor(ColorYellow)
+			case "4":
+				m.configManager.SetAccentColor(ColorGreen)
+			case "5":
+				m.configManager.SetAccentColor(ColorCyan)
+			case "6":
+				m.configManager.SetAccentColor(ColorBlue)
+			case "7":
+				m.configManager.SetAccentColor(ColorPurple)
+			case "8":
+				m.configManager.SetAccentColor(ColorPink)
+			case "9":
+				m.configManager.SetAccentColor(ColorWhite)
+			case "0":
+				m.configManager.SetAccentColor(ColorBlack)
+			default:
+				// Try to parse as hex color
+				if m.configManager.SetCustomColor(m.customInput) {
+					m.configManager.SetAccentColor(ColorCustom)
+				}
+			}
+			m.customInput = ""
+			m.state = StateSettings
+		}
+		return m, nil
+	case tea.KeyBackspace:
+		if len(m.customInput) > 0 {
+			m.customInput = m.customInput[:len(m.customInput)-1]
+		}
+		return m, nil
+	case tea.KeyRunes:
+		// Allow hex characters (0-9, a-f, A-F) and #
+		for _, r := range msg.Runes {
+			if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') || r == '#' {
+				if len(m.customInput) < 7 {
+					m.customInput += string(r)
+				}
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m model) View() string {
 	switch m.state {
 	case StateMenu:
@@ -454,6 +566,12 @@ func (m model) View() string {
 		return RenderStats(NewStatistics(m.leaderboard), m.width, m.height, m.wantToQuit)
 	case StateHeatmap:
 		return RenderHeatmap(m.heatmap, m.width, m.height, m.wantToQuit)
+	case StateSettings:
+		return RenderSettings(m.configManager, m.width, m.height, m.wantToQuit)
+	case StateCursorSelect:
+		return RenderCursorSelect(m.configManager, m.width, m.height, m.wantToQuit)
+	case StateColorSelect:
+		return RenderColorSelect(m.configManager, m.width, m.height, m.wantToQuit)
 	case StateCustomWordList:
 		return RenderCustomWordList(m.wordListManager, m.currentWordList, m.width, m.height, m.wantToQuit)
 	case StateTimeSelect:
@@ -461,7 +579,7 @@ func (m model) View() string {
 	case StateWordsSelect:
 		return RenderWordsSelect(m.leaderboard, m.width, m.height, m.wantToQuit)
 	case StateCustomInput:
-		return RenderCustomInput(m.customInput, m.inputMode, m.width, m.height)
+		return RenderCustomInput(m.customInput, m.inputMode, m.width, m.height, m.configManager.GetCursorType().CursorChar())
 	case StatePlaying:
 		if m.game != nil {
 			return RenderGame(m.game, m.width, m.height, m.wantToQuit)

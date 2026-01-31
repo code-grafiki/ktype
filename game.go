@@ -20,6 +20,9 @@ const (
 	StateStats                      // Statistics dashboard
 	StateHeatmap                    // Typing heatmap
 	StateCustomWordList             // Custom word lists
+	StateSettings                   // Settings menu
+	StateCursorSelect               // Cursor type selection
+	StateColorSelect                // Accent color selection
 	StatePlaying
 	StateFinished
 )
