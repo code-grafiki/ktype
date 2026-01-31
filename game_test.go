@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewTimedGame(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 
 	if game == nil {
 		t.Fatal("NewTimedGame returned nil")
@@ -30,7 +30,7 @@ func TestNewTimedGame(t *testing.T) {
 }
 
 func TestNewWordsGame(t *testing.T) {
-	game := NewWordsGame(25, DifficultyMedium)
+	game := NewWordsGame(25, DifficultyMedium, ComplexityNormal)
 
 	if game == nil {
 		t.Fatal("NewWordsGame returned nil")
@@ -50,7 +50,7 @@ func TestNewWordsGame(t *testing.T) {
 }
 
 func TestNewZenGame(t *testing.T) {
-	game := NewZenGame(DifficultyMedium)
+	game := NewZenGame(DifficultyMedium, ComplexityNormal)
 
 	if game == nil {
 		t.Fatal("NewZenGame returned nil")
@@ -82,11 +82,11 @@ func TestGameModeString(t *testing.T) {
 	for _, tt := range tests {
 		var game *Game
 		if tt.mode == ModeTimed {
-			game = NewTimedGame(tt.duration, DifficultyMedium)
+			game = NewTimedGame(tt.duration, DifficultyMedium, ComplexityNormal)
 		} else if tt.mode == ModeWords {
-			game = NewWordsGame(tt.target, DifficultyMedium)
+			game = NewWordsGame(tt.target, DifficultyMedium, ComplexityNormal)
 		} else {
-			game = NewZenGame(DifficultyMedium)
+			game = NewZenGame(DifficultyMedium, ComplexityNormal)
 		}
 
 		result := game.ModeString()
@@ -97,7 +97,7 @@ func TestGameModeString(t *testing.T) {
 }
 
 func TestGameWPM(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 
 	// Test WPM at start (should be 0)
 	if wpm := game.WPM(); wpm != 0 {
@@ -134,7 +134,7 @@ func TestGameAccuracy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			game := NewTimedGame(30*time.Second, DifficultyMedium)
+			game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 			game.TotalChars = tt.totalChars
 			game.ErrorChars = tt.errorChars
 
@@ -147,7 +147,7 @@ func TestGameAccuracy(t *testing.T) {
 }
 
 func TestGameHandleChar(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	game.Words = []string{"hello", "world"}
 
 	// Type "he" correctly
@@ -175,7 +175,7 @@ func TestGameHandleChar(t *testing.T) {
 }
 
 func TestGameHandleSpace(t *testing.T) {
-	game := NewWordsGame(2, DifficultyMedium)
+	game := NewWordsGame(2, DifficultyMedium, ComplexityNormal)
 	game.Words = []string{"hello", "world", "test"}
 	game.CurrentInput = "hello"
 
@@ -195,7 +195,7 @@ func TestGameHandleSpace(t *testing.T) {
 }
 
 func TestGameHandleBackspace(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	game.CurrentInput = "hello"
 
 	game.HandleBackspace()
@@ -212,7 +212,7 @@ func TestGameHandleBackspace(t *testing.T) {
 }
 
 func TestGameTimeRemaining(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	game.StartTime = time.Now()
 	game.Elapsed = 10 * time.Second
 
@@ -222,14 +222,14 @@ func TestGameTimeRemaining(t *testing.T) {
 	}
 
 	// Words mode should return -1
-	wordsGame := NewWordsGame(25, DifficultyMedium)
+	wordsGame := NewWordsGame(25, DifficultyMedium, ComplexityNormal)
 	if wordsGame.TimeRemaining() != -1 {
 		t.Error("Expected -1 for words mode")
 	}
 }
 
 func TestGameWordsRemaining(t *testing.T) {
-	game := NewWordsGame(10, DifficultyMedium)
+	game := NewWordsGame(10, DifficultyMedium, ComplexityNormal)
 	game.TypedWords = make([]string, 3)
 
 	remaining := game.WordsRemaining()
@@ -238,14 +238,14 @@ func TestGameWordsRemaining(t *testing.T) {
 	}
 
 	// Timed mode should return -1
-	timedGame := NewTimedGame(30*time.Second, DifficultyMedium)
+	timedGame := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	if timedGame.WordsRemaining() != -1 {
 		t.Error("Expected -1 for timed mode")
 	}
 }
 
 func TestGameCorrectWordsCount(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	game.Correct = []bool{true, false, true, true}
 
 	count := game.CorrectWordsCount()
@@ -255,7 +255,7 @@ func TestGameCorrectWordsCount(t *testing.T) {
 }
 
 func TestGameCurrentWordState(t *testing.T) {
-	game := NewTimedGame(30*time.Second, DifficultyMedium)
+	game := NewTimedGame(30*time.Second, DifficultyMedium, ComplexityNormal)
 	game.Words = []string{"hello"}
 	game.CurrentInput = "he"
 
@@ -275,7 +275,7 @@ func TestGameCurrentWordState(t *testing.T) {
 }
 
 func TestGameUpdate(t *testing.T) {
-	game := NewTimedGame(1*time.Second, DifficultyMedium)
+	game := NewTimedGame(1*time.Second, DifficultyMedium, ComplexityNormal)
 	game.StartTime = time.Now().Add(-2 * time.Second) // Started 2s ago
 
 	game.Update()

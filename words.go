@@ -494,3 +494,134 @@ func getDifficultyFromString(s string) Difficulty {
 		return DifficultyMedium
 	}
 }
+
+// Punctuation marks for advanced typing practice
+var punctuationMarks = []string{
+	",", ".", ";", ":", "!", "?", "-", "_", "'", "\"",
+	"(", ")", "[", "]", "{", "}", "/", "\\", "@", "#",
+	"$", "%", "^", "&", "*", "+", "=", "<", ">", "|",
+}
+
+// Common punctuation combinations
+var punctuationCombos = []string{
+	", ", ". ", "; ", ": ", "! ", "? ", " - ", "'s", "n't",
+	"'re", "'ll", "'d", "'ve", "'m", "..", "...", "!!", "??",
+}
+
+// Numbers for numeric typing practice
+var numberList = []string{
+	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+	"10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
+	"20", "25", "30", "40", "50", "60", "75", "80", "90", "100",
+	"123", "456", "789", "1000", "2024", "3.14", "1.5", "2.0", "0.5",
+}
+
+// Number with punctuation combinations
+var numberPunctuationCombos = []string{
+	"1,000", "10,000", "100,000", "1,000,000", "3.14", "$100", "50%",
+	"(2024)", "v1.0", "2.5", "-5", "+10", "1st", "2nd", "3rd", "4th",
+	"5:30", "12:00", "24/7", "9-5", "20/20", "1:1", "2x", "3D",
+}
+
+// WordComplexity represents additional complexity options
+type WordComplexity int
+
+const (
+	ComplexityNormal WordComplexity = iota
+	ComplexityPunctuation
+	ComplexityNumbers
+	ComplexityFull
+)
+
+// ComplexityString returns a string representation
+func (c WordComplexity) String() string {
+	switch c {
+	case ComplexityPunctuation:
+		return "punctuation"
+	case ComplexityNumbers:
+		return "numbers"
+	case ComplexityFull:
+		return "full"
+	default:
+		return "normal"
+	}
+}
+
+// getRandomWordsWithComplexity returns words with optional punctuation/numbers
+func getRandomWordsWithComplexity(n int, difficulty Difficulty, complexity WordComplexity) []string {
+	if n <= 0 {
+		return []string{}
+	}
+
+	baseWords := getRandomWords(n, difficulty)
+	if complexity == ComplexityNormal {
+		return baseWords
+	}
+
+	words := make([]string, n)
+
+	for i := 0; i < n; i++ {
+		word := baseWords[i]
+
+		switch complexity {
+		case ComplexityPunctuation:
+			// 30% chance to add punctuation to a word
+			if rand.Float32() < 0.3 {
+				word = addPunctuationToWord(word)
+			}
+		case ComplexityNumbers:
+			// 20% chance to replace word with number, 10% to add number to word
+			r := rand.Float32()
+			if r < 0.2 {
+				word = numberList[rand.Intn(len(numberList))]
+			} else if r < 0.3 {
+				word = word + numberList[rand.Intn(len(numberList))]
+			}
+		case ComplexityFull:
+			// Mix of punctuation and numbers
+			r := rand.Float32()
+			if r < 0.25 {
+				// Replace with number
+				word = numberList[rand.Intn(len(numberList))]
+			} else if r < 0.45 {
+				// Add punctuation
+				word = addPunctuationToWord(word)
+			} else if r < 0.55 {
+				// Number-punctuation combo
+				word = numberPunctuationCombos[rand.Intn(len(numberPunctuationCombos))]
+			}
+		}
+
+		words[i] = word
+	}
+
+	return words
+}
+
+// addPunctuationToWord adds punctuation to a word
+func addPunctuationToWord(word string) string {
+	// Different punctuation strategies
+	switch rand.Intn(5) {
+	case 0:
+		// Add trailing punctuation
+		return word + punctuationMarks[rand.Intn(len(punctuationMarks))]
+	case 1:
+		// Add leading punctuation
+		return punctuationMarks[rand.Intn(len(punctuationMarks))] + word
+	case 2:
+		// Wrap in punctuation
+		p1 := punctuationMarks[rand.Intn(len(punctuationMarks))]
+		p2 := punctuationMarks[rand.Intn(len(punctuationMarks))]
+		return p1 + word + p2
+	case 3:
+		// Add apostrophe combo
+		return word + punctuationCombos[rand.Intn(6)+8] // 's, n't, 're, 'll, 'd, 've, 'm
+	default:
+		// Add internal punctuation
+		if len(word) > 2 {
+			mid := len(word) / 2
+			return word[:mid] + punctuationMarks[rand.Intn(len(punctuationMarks))] + word[mid:]
+		}
+		return word + punctuationMarks[rand.Intn(len(punctuationMarks))]
+	}
+}

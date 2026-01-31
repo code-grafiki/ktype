@@ -24,8 +24,9 @@ type model struct {
 
 	// For custom input
 	customInput string
-	inputMode   string     // "time" or "words"
-	difficulty  Difficulty // Current difficulty level
+	inputMode   string         // "time" or "words"
+	difficulty  Difficulty     // Current difficulty level
+	complexity  WordComplexity // Current complexity level (normal, punctuation, numbers, full)
 }
 
 func initialModel() model {
@@ -35,6 +36,7 @@ func initialModel() model {
 		height:      24,
 		leaderboard: NewLeaderboard(),
 		difficulty:  DifficultyMedium,
+		complexity:  ComplexityNormal,
 	}
 }
 
@@ -90,6 +92,8 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleMenuKey(msg)
 	case StateDifficultySelect:
 		return m.handleDifficultySelectKey(msg)
+	case StateComplexitySelect:
+		return m.handleComplexitySelectKey(msg)
 	case StateStats:
 		return m.handleStatsKey(msg)
 	case StateTimeSelect:
@@ -109,15 +113,15 @@ func (m model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1": // Quick start 30s
-		m.game = NewTimedGame(30*time.Second, m.difficulty)
+		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2": // Quick start 50 words
-		m.game = NewWordsGame(50, m.difficulty)
+		m.game = NewWordsGame(50, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3": // Zen mode
-		m.game = NewZenGame(m.difficulty)
+		m.game = NewZenGame(m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "t":
@@ -128,6 +132,9 @@ func (m model) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "d":
 		m.state = StateDifficultySelect
+		return m, nil
+	case "c":
+		m.state = StateComplexitySelect
 		return m, nil
 	case "s":
 		m.state = StateStats
@@ -164,6 +171,31 @@ func (m model) handleDifficultySelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) handleComplexitySelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "1":
+		m.complexity = ComplexityNormal
+		m.state = StateMenu
+		return m, nil
+	case "2":
+		m.complexity = ComplexityPunctuation
+		m.state = StateMenu
+		return m, nil
+	case "3":
+		m.complexity = ComplexityNumbers
+		m.state = StateMenu
+		return m, nil
+	case "4":
+		m.complexity = ComplexityFull
+		m.state = StateMenu
+		return m, nil
+	case "esc":
+		m.state = StateMenu
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m model) handleStatsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
@@ -176,15 +208,15 @@ func (m model) handleStatsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleTimeSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1":
-		m.game = NewTimedGame(15*time.Second, m.difficulty)
+		m.game = NewTimedGame(15*time.Second, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2":
-		m.game = NewTimedGame(30*time.Second, m.difficulty)
+		m.game = NewTimedGame(30*time.Second, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3":
-		m.game = NewTimedGame(60*time.Second, m.difficulty)
+		m.game = NewTimedGame(60*time.Second, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "c":
@@ -203,19 +235,19 @@ func (m model) handleTimeSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleWordsSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "1":
-		m.game = NewWordsGame(10, m.difficulty)
+		m.game = NewWordsGame(10, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "2":
-		m.game = NewWordsGame(25, m.difficulty)
+		m.game = NewWordsGame(25, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "3":
-		m.game = NewWordsGame(50, m.difficulty)
+		m.game = NewWordsGame(50, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "4":
-		m.game = NewWordsGame(100, m.difficulty)
+		m.game = NewWordsGame(100, m.difficulty, m.complexity)
 		m.state = StatePlaying
 		return m, tickCmd()
 	case "c":
@@ -253,9 +285,9 @@ func (m model) handleCustomInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return m, nil // Max 1000 words
 				}
 				if m.inputMode == "time" {
-					m.game = NewTimedGame(time.Duration(value)*time.Second, m.difficulty)
+					m.game = NewTimedGame(time.Duration(value)*time.Second, m.difficulty, m.complexity)
 				} else {
-					m.game = NewWordsGame(value, m.difficulty)
+					m.game = NewWordsGame(value, m.difficulty, m.complexity)
 				}
 				m.state = StatePlaying
 				m.customInput = ""
@@ -351,9 +383,11 @@ func (m model) handleFinishedKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	switch m.state {
 	case StateMenu:
-		return RenderMainMenu(m.leaderboard, m.width, m.height, m.wantToQuit, m.difficulty)
+		return RenderMainMenu(m.leaderboard, m.width, m.height, m.wantToQuit, m.difficulty, m.complexity)
 	case StateDifficultySelect:
 		return RenderDifficultySelect(m.difficulty, m.width, m.height, m.wantToQuit)
+	case StateComplexitySelect:
+		return RenderComplexitySelect(m.complexity, m.width, m.height, m.wantToQuit)
 	case StateStats:
 		return RenderStats(NewStatistics(m.leaderboard), m.width, m.height, m.wantToQuit)
 	case StateTimeSelect:

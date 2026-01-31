@@ -83,7 +83,7 @@ var (
 )
 
 // RenderMainMenu renders the main menu with quick start options
-func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficulty Difficulty) string {
+func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficulty Difficulty, complexity WordComplexity) string {
 	var s strings.Builder
 
 	title := titleStyle.Render("ktype")
@@ -135,6 +135,12 @@ func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficu
 	s.WriteString(subtleStyle.Render("difficulty: ") + wpmStyle.Render(difficulty.String()))
 	s.WriteString("\n")
 	s.WriteString("   " + wpmStyle.Render("d") + subtleStyle.Render(" → change difficulty\n"))
+
+	// Complexity
+	s.WriteString("\n")
+	s.WriteString(subtleStyle.Render("content: ") + wpmStyle.Render(complexity.String()))
+	s.WriteString("\n")
+	s.WriteString("   " + wpmStyle.Render("c") + subtleStyle.Render(" → change content (punctuation/numbers)\n"))
 
 	// Statistics
 	s.WriteString("\n")
@@ -271,6 +277,52 @@ func RenderDifficultySelect(currentDifficulty Difficulty, width, height int, wan
 		keyStyle := wpmStyle
 		labelStyle := subtleStyle
 		if opt.difficulty == currentDifficulty {
+			keyStyle = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+			labelStyle = lipgloss.NewStyle().Foreground(colorText)
+		}
+		s.WriteString(fmt.Sprintf("   %s %s (%s)\n", keyStyle.Render(opt.key), labelStyle.Render("→ "+opt.label), opt.desc))
+	}
+
+	s.WriteString("\n")
+	var help string
+	if wantToQuit {
+		help = errorStyle.Render("press esc again to quit")
+	} else {
+		help = helpStyle.Render("esc: back")
+	}
+	s.WriteString(help)
+
+	content := containerStyle.Render(s.String())
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// RenderComplexitySelect renders the complexity selection screen
+func RenderComplexitySelect(currentComplexity WordComplexity, width, height int, wantToQuit bool) string {
+	var s strings.Builder
+
+	title := titleStyle.Render("complexity")
+	s.WriteString(title)
+	s.WriteString("\n\n")
+
+	s.WriteString(subtleStyle.Render("select complexity:"))
+	s.WriteString("\n\n")
+
+	options := []struct {
+		key        string
+		label      string
+		complexity WordComplexity
+		desc       string
+	}{
+		{"1", "normal", ComplexityNormal, "letters only"},
+		{"2", "punctuation", ComplexityPunctuation, "letters + punctuation"},
+		{"3", "numbers", ComplexityNumbers, "letters + numbers"},
+		{"4", "full", ComplexityFull, "letters + punctuation + numbers"},
+	}
+
+	for _, opt := range options {
+		keyStyle := wpmStyle
+		labelStyle := subtleStyle
+		if opt.complexity == currentComplexity {
 			keyStyle = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
 			labelStyle = lipgloss.NewStyle().Foreground(colorText)
 		}
