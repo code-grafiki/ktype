@@ -169,6 +169,26 @@ func (cm *ConfigManager) SetAccentColorString(color string) error {
 // SetAccentColor updates the accent color (enum version)
 func (cm *ConfigManager) SetAccentColor(color AccentColor) {
 	cm.config.AccentColorEnum = color
+	if color == ColorCustom && cm.config.CustomColor != "" {
+		cm.config.AccentColor = cm.config.CustomColor
+	} else {
+		// Set default color for presets
+		colors := []string{
+			"#e06c75", // Red
+			"#d19a66", // Orange
+			"#e5c07b", // Yellow
+			"#98c379", // Green
+			"#56b6c2", // Cyan
+			"#61afef", // Blue
+			"#c678dd", // Purple
+			"#ff79c6", // Pink
+			"#abb2bf", // White
+			"#282c34", // Black
+		}
+		if int(color) >= 0 && int(color) < len(colors) {
+			cm.config.AccentColor = colors[color]
+		}
+	}
 	cm.save()
 }
 

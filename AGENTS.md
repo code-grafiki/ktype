@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ktype is a CLI typing test application built with Go using the Bubble Tea TUI framework. It features multiple game modes (timed, words, zen), a leaderboard system with personal bests, and a clean MonkeyType-inspired interface.
+ktype is a CLI typing test application built with Go using the Bubble Tea TUI framework. It features multiple game modes (timed, words, zen), a leaderboard system with personal bests, statistics tracking, heatmaps, daily challenges, and a clean MonkeyType-inspired interface.
 
 ## Build Commands
 
@@ -26,8 +26,11 @@ go test ./...
 # Run tests with coverage
 go test -cover ./...
 
-# Run specific test
+# Run specific test by name
 go test -run TestFunctionName ./...
+
+# Run specific test in a specific file
+go test -run TestFunctionName path/to/file_test.go
 
 # Run tests in verbose mode
 go test -v ./...
@@ -80,7 +83,7 @@ import (
     "fmt"
     "os"
     "time"
-    
+
     // Third-party packages (alphabetically)
     tea "github.com/charmbracelet/bubbletea"
     "github.com/charmbracelet/lipgloss"
@@ -162,6 +165,11 @@ var (
 - `ui.go`: Rendering functions, lipgloss styles
 - `leaderboard.go`: Score persistence, personal bests
 - `words.go`: Word lists and random selection
+- `wordlist.go`: Custom word list management
+- `statistics.go`: Statistics tracking and analytics
+- `heatmap.go`: Typing heatmap visualization
+- `config.go`: Configuration management
+- `challenges.go`: Daily challenges system
 - `*_test.go`: Test files (create as needed)
 
 ## Dependencies
@@ -169,6 +177,7 @@ var (
 Key dependencies (managed via go.mod):
 - `github.com/charmbracelet/bubbletea`: TUI framework
 - `github.com/charmbracelet/lipgloss`: Styling library
+- `github.com/charmbracelet/colorprofile`: Color profile support
 
 ## Git Workflow
 

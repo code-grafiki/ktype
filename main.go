@@ -43,6 +43,10 @@ type model struct {
 }
 
 func initialModel() model {
+	cm := NewConfigManager()
+	// Apply the saved accent color on startup
+	UpdateAccentColor(cm.GetAccentColor())
+
 	return model{
 		state:           StateMenu,
 		width:           80,
@@ -53,7 +57,7 @@ func initialModel() model {
 		wordListManager: NewWordListManager(),
 		currentWordList: "",
 		heatmap:         NewHeatmap(),
-		configManager:   NewConfigManager(),
+		configManager:   cm,
 		challenges:      NewDailyChallenges(),
 	}
 }
@@ -516,59 +520,59 @@ func (m model) handleCursorSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleColorSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEsc:
-		m.customInput = ""
+	switch msg.String() {
+	case "1":
+		m.configManager.SetAccentColor(ColorRed)
+		UpdateAccentColor(m.configManager.GetAccentColor())
 		m.state = StateSettings
 		return m, nil
-	case tea.KeyEnter:
-		if len(m.customInput) > 0 {
-			// Check if it's a preset number
-			switch m.customInput {
-			case "1":
-				m.configManager.SetAccentColor(ColorRed)
-			case "2":
-				m.configManager.SetAccentColor(ColorOrange)
-			case "3":
-				m.configManager.SetAccentColor(ColorYellow)
-			case "4":
-				m.configManager.SetAccentColor(ColorGreen)
-			case "5":
-				m.configManager.SetAccentColor(ColorCyan)
-			case "6":
-				m.configManager.SetAccentColor(ColorBlue)
-			case "7":
-				m.configManager.SetAccentColor(ColorPurple)
-			case "8":
-				m.configManager.SetAccentColor(ColorPink)
-			case "9":
-				m.configManager.SetAccentColor(ColorWhite)
-			case "0":
-				m.configManager.SetAccentColor(ColorBlack)
-			default:
-				// Try to parse as hex color
-				if m.configManager.SetCustomColor(m.customInput) {
-					m.configManager.SetAccentColor(ColorCustom)
-				}
-			}
-			m.customInput = ""
-			m.state = StateSettings
-		}
+	case "2":
+		m.configManager.SetAccentColor(ColorOrange)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
 		return m, nil
-	case tea.KeyBackspace:
-		if len(m.customInput) > 0 {
-			m.customInput = m.customInput[:len(m.customInput)-1]
-		}
+	case "3":
+		m.configManager.SetAccentColor(ColorYellow)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
 		return m, nil
-	case tea.KeyRunes:
-		// Allow hex characters (0-9, a-f, A-F) and #
-		for _, r := range msg.Runes {
-			if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') || r == '#' {
-				if len(m.customInput) < 7 {
-					m.customInput += string(r)
-				}
-			}
-		}
+	case "4":
+		m.configManager.SetAccentColor(ColorGreen)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "5":
+		m.configManager.SetAccentColor(ColorCyan)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "6":
+		m.configManager.SetAccentColor(ColorBlue)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "7":
+		m.configManager.SetAccentColor(ColorPurple)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "8":
+		m.configManager.SetAccentColor(ColorPink)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "9":
+		m.configManager.SetAccentColor(ColorWhite)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "0":
+		m.configManager.SetAccentColor(ColorBlack)
+		UpdateAccentColor(m.configManager.GetAccentColor())
+		m.state = StateSettings
+		return m, nil
+	case "esc":
+		m.state = StateSettings
 		return m, nil
 	}
 	return m, nil
@@ -602,7 +606,7 @@ func (m model) View() string {
 		return RenderCustomInput(m.customInput, m.inputMode, m.width, m.height, m.configManager.GetCursorType().CursorChar())
 	case StatePlaying:
 		if m.game != nil {
-			return RenderGame(m.game, m.width, m.height, m.wantToQuit)
+			return RenderGame(m.game, m.width, m.height, m.wantToQuit, m.configManager.GetCursorType().CursorChar())
 		}
 	case StateFinished:
 		if m.game != nil {

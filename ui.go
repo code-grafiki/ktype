@@ -83,6 +83,33 @@ var (
 			Bold(true)
 )
 
+// UpdateAccentColor updates the accent color and all dependent styles
+func UpdateAccentColor(hex string) {
+	colorAccent = lipgloss.Color(hex)
+
+	// Update all styles that use colorAccent
+	titleStyle = lipgloss.NewStyle().
+		Foreground(colorAccent).
+		Bold(true).
+		MarginBottom(1)
+
+	cursorStyle = lipgloss.NewStyle().
+		Foreground(colorAccent).
+		Bold(false)
+
+	timerStyle = lipgloss.NewStyle().
+		Foreground(colorAccent).
+		Bold(true)
+
+	wpmStyle = lipgloss.NewStyle().
+		Foreground(colorAccent).
+		Bold(true)
+
+	newPBStyle = lipgloss.NewStyle().
+		Foreground(colorAccent).
+		Bold(true)
+}
+
 // RenderMainMenu renders the main menu with quick start options
 func RenderMainMenu(lb *Leaderboard, width, height int, wantToQuit bool, difficulty Difficulty, complexity WordComplexity) string {
 	var s strings.Builder
@@ -394,7 +421,7 @@ func RenderCustomInput(input, mode string, width, height int, cursorChar string)
 }
 
 // RenderGame renders the main game screen
-func RenderGame(g *Game, width, height int, wantToQuit bool) string {
+func RenderGame(g *Game, width, height int, wantToQuit bool, cursorChar string) string {
 	var s strings.Builder
 
 	// Inside the container, we have Width(65) and Padding(2, 4).
@@ -403,7 +430,7 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 
 	// Build the words display (3 lines)
 	// We use a slightly smaller width for the words themselves to ensure they fit well
-	wordsLines := buildWordsLines(g, internalWidth-2, 3, "_")
+	wordsLines := buildWordsLines(g, internalWidth-2, 3, cursorChar)
 
 	s.WriteString("\n")
 	for _, line := range wordsLines {
@@ -1217,7 +1244,7 @@ func RenderColorSelect(cm *ConfigManager, width, height int, wantToQuit bool) st
 	s.WriteString(title)
 	s.WriteString("\n\n")
 
-	s.WriteString(subtleStyle.Render("preset colors:"))
+	s.WriteString(subtleStyle.Render("select a color:"))
 	s.WriteString("\n\n")
 
 	colors := []struct {
@@ -1250,15 +1277,11 @@ func RenderColorSelect(cm *ConfigManager, width, height int, wantToQuit bool) st
 	}
 
 	s.WriteString("\n")
-	s.WriteString(subtleStyle.Render("or type custom hex color (e.g., #ff5733):"))
-	s.WriteString("\n\n")
-
-	s.WriteString("\n")
 	var help string
 	if wantToQuit {
 		help = errorStyle.Render("press esc again to go back")
 	} else {
-		help = helpStyle.Render("esc to go back • enter to confirm")
+		help = helpStyle.Render("esc to go back")
 	}
 	s.WriteString(help)
 
