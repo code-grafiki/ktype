@@ -33,6 +33,26 @@ const (
 	ModeZen
 )
 
+// TypingError represents a single typing error with details
+type TypingError struct {
+	ExpectedChar rune      // The character that should have been typed
+	TypedChar    rune      // The character that was actually typed
+	Position     int       // Position in the word where error occurred
+	WordIndex    int       // Which word the error occurred in
+	Timestamp    time.Time // When the error occurred
+	ErrorType    ErrorType // Type of error
+}
+
+// ErrorType categorizes different types of typing errors
+type ErrorType int
+
+const (
+	ErrorWrongChar     ErrorType = iota // Typed wrong character
+	ErrorExtraChar                      // Typed extra character beyond word length
+	ErrorMissingChar                    // Didn't type a character (skipped)
+	ErrorTransposition                  // Swapped adjacent characters
+)
+
 // Game holds all game state
 type Game struct {
 	Words        []string // Words to type
@@ -54,21 +74,27 @@ type Game struct {
 	ErrorChars  int // Characters typed incorrectly
 
 	heatmap *Heatmap // Model-level heatmap reference
+
+	// Enhanced error tracking
+	Errors        []TypingError // Detailed error log
+	CurrentErrors []int         // Positions of errors in current word
 }
 
 // NewTimedGame creates a new timed game
 func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(200, difficulty, complexity) // Get enough words for any test
 	return &Game{
-		Words:      words,
-		Correct:    make([]bool, 0),
-		TypedWords: make([]string, 0),
-		Duration:   duration,
-		Mode:       ModeTimed,
-		Difficulty: difficulty,
-		Complexity: complexity,
-		State:      StatePlaying,
-		heatmap:    heatmap,
+		Words:         words,
+		Correct:       make([]bool, 0),
+		TypedWords:    make([]string, 0),
+		Duration:      duration,
+		Mode:          ModeTimed,
+		Difficulty:    difficulty,
+		Complexity:    complexity,
+		State:         StatePlaying,
+		heatmap:       heatmap,
+		Errors:        make([]TypingError, 0),
+		CurrentErrors: make([]int, 0),
 	}
 }
 
@@ -76,15 +102,17 @@ func NewTimedGame(duration time.Duration, difficulty Difficulty, complexity Word
 func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(wordCount+10, difficulty, complexity) // A few extra just in case
 	return &Game{
-		Words:       words,
-		Correct:     make([]bool, 0),
-		TypedWords:  make([]string, 0),
-		TargetWords: wordCount,
-		Mode:        ModeWords,
-		Difficulty:  difficulty,
-		Complexity:  complexity,
-		State:       StatePlaying,
-		heatmap:     heatmap,
+		Words:         words,
+		Correct:       make([]bool, 0),
+		TypedWords:    make([]string, 0),
+		TargetWords:   wordCount,
+		Mode:          ModeWords,
+		Difficulty:    difficulty,
+		Complexity:    complexity,
+		State:         StatePlaying,
+		heatmap:       heatmap,
+		Errors:        make([]TypingError, 0),
+		CurrentErrors: make([]int, 0),
 	}
 }
 
@@ -92,14 +120,16 @@ func NewWordsGame(wordCount int, difficulty Difficulty, complexity WordComplexit
 func NewZenGame(difficulty Difficulty, complexity WordComplexity, heatmap *Heatmap) *Game {
 	words := getRandomWordsWithComplexity(1000, difficulty, complexity) // Large pool for zen mode
 	return &Game{
-		Words:      words,
-		Correct:    make([]bool, 0),
-		TypedWords: make([]string, 0),
-		Mode:       ModeZen,
-		Difficulty: difficulty,
-		Complexity: complexity,
-		State:      StatePlaying,
-		heatmap:    heatmap,
+		Words:         words,
+		Correct:       make([]bool, 0),
+		TypedWords:    make([]string, 0),
+		Mode:          ModeZen,
+		Difficulty:    difficulty,
+		Complexity:    complexity,
+		State:         StatePlaying,
+		heatmap:       heatmap,
+		Errors:        make([]TypingError, 0),
+		CurrentErrors: make([]int, 0),
 	}
 }
 
@@ -197,10 +227,32 @@ func (g *Game) HandleChar(char rune) {
 		if g.CurrentInput[inputLen-1] != currentWord[inputLen-1] {
 			g.ErrorChars++
 			isCorrect = false
+			// Record detailed error
+			err := TypingError{
+				ExpectedChar: rune(currentWord[inputLen-1]),
+				TypedChar:    char,
+				Position:     inputLen - 1,
+				WordIndex:    g.WordIndex,
+				Timestamp:    time.Now(),
+				ErrorType:    ErrorWrongChar,
+			}
+			g.Errors = append(g.Errors, err)
+			g.CurrentErrors = append(g.CurrentErrors, inputLen-1)
 		}
 	} else {
 		g.ErrorChars++ // Typed more chars than the word has
 		isCorrect = false
+		// Record detailed error for extra character
+		err := TypingError{
+			ExpectedChar: 0,
+			TypedChar:    char,
+			Position:     inputLen - 1,
+			WordIndex:    g.WordIndex,
+			Timestamp:    time.Now(),
+			ErrorType:    ErrorExtraChar,
+		}
+		g.Errors = append(g.Errors, err)
+		g.CurrentErrors = append(g.CurrentErrors, inputLen-1)
 	}
 
 	// Track in heatmap

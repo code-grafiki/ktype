@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -407,8 +408,36 @@ func RenderGame(g *Game, width, height int, wantToQuit bool) string {
 	// Live stats
 	wpm := wpmStyle.Render(fmt.Sprintf("%d wpm", g.WPM()))
 	accuracy := accuracyStyle.Render(fmt.Sprintf("%d%%", g.Accuracy()))
-	stats := statsStyle.Render(wpm + subtleStyle.Render("  •  ") + accuracy)
+	liveErrors := len(g.CurrentErrors)
+	liveErrorDisplay := ""
+	if liveErrors > 0 {
+		liveErrorDisplay = errorStyle.Render(fmt.Sprintf("%d", liveErrors))
+	} else {
+		liveErrorDisplay = subtleStyle.Render("0")
+	}
+	stats := statsStyle.Render(wpm + subtleStyle.Render("  •  ") + accuracy + subtleStyle.Render("  •  ") + liveErrorDisplay + subtleStyle.Render(" errors"))
 	s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, stats))
+
+	// Error statistics section (subtle)
+	totalErrors, topErrors := GetErrorStats(g)
+	if totalErrors > 0 {
+		s.WriteString("\n")
+		var errorStats strings.Builder
+		errorStats.WriteString(errorDetailStyle.Render("errors: "))
+		errorStats.WriteString(subtleStyle.Render(fmt.Sprintf("%d total", totalErrors)))
+		if len(topErrors) > 0 {
+			errorStats.WriteString(errorDetailStyle.Render(" • "))
+			errorStats.WriteString(subtleStyle.Render("top: "))
+			for i, err := range topErrors {
+				if i > 0 {
+					errorStats.WriteString(subtleStyle.Render(", "))
+				}
+				errorStats.WriteString(actualCharStyle.Render(string(err.Char)))
+				errorStats.WriteString(subtleStyle.Render(fmt.Sprintf("(%d)", err.Count)))
+			}
+		}
+		s.WriteString(lipgloss.PlaceHorizontal(internalWidth, lipgloss.Center, errorStats.String()))
+	}
 
 	// Help text or quit confirmation
 	s.WriteString("\n\n")
@@ -928,4 +957,159 @@ func RenderCustomWordList(wm *WordListManager, currentList string, width, height
 
 	content := containerStyle.Render(s.String())
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
+// Enhanced error visualization colors
+var (
+	colorExpected = lipgloss.Color("#e2b714") // Yellow for expected char
+	colorActual   = lipgloss.Color("#ca4754") // Red for actual typed char
+	colorErrorDim = lipgloss.Color("#7c4c4c") // Dimmed red background
+)
+
+// Enhanced error styles
+var (
+	// expectedCharStyle shows what character should have been typed
+	expectedCharStyle = lipgloss.NewStyle().
+				Foreground(colorExpected).
+				Bold(true)
+
+	// actualCharStyle shows what was actually typed (wrong)
+	actualCharStyle = lipgloss.NewStyle().
+			Foreground(colorActual).
+			Bold(true).
+			Underline(true)
+
+	// errorPositionStyle highlights the position of an error
+	errorPositionStyle = lipgloss.NewStyle().
+				Background(colorErrorDim).
+				Foreground(colorText)
+
+	// errorDetailStyle for showing error details panel
+	errorDetailStyle = lipgloss.NewStyle().
+				Foreground(colorSubtle).
+				Italic(true)
+)
+
+// ErrorTypeString returns a human-readable error type description
+func ErrorTypeString(et ErrorType) string {
+	switch et {
+	case ErrorWrongChar:
+		return "wrong character"
+	case ErrorExtraChar:
+		return "extra character"
+	case ErrorMissingChar:
+		return "missing character"
+	case ErrorTransposition:
+		return "transposed"
+	default:
+		return "unknown"
+	}
+}
+
+// FormatErrorDetails formats a typing error for display
+func FormatErrorDetails(err TypingError) string {
+	var b strings.Builder
+
+	b.WriteString(errorDetailStyle.Render(fmt.Sprintf("[%s] ", ErrorTypeString(err.ErrorType))))
+
+	if err.ErrorType == ErrorWrongChar {
+		b.WriteString(fmt.Sprintf("expected %s but typed %s",
+			expectedCharStyle.Render(string(err.ExpectedChar)),
+			actualCharStyle.Render(string(err.TypedChar))))
+	} else if err.ErrorType == ErrorExtraChar {
+		b.WriteString(fmt.Sprintf("extra %s (word only has %d chars)",
+			actualCharStyle.Render(string(err.TypedChar)),
+			err.Position))
+	}
+
+	return b.String()
+}
+
+// RenderCurrentWordWithErrors renders the current word with detailed error highlighting
+func RenderCurrentWordWithErrors(game *Game) string {
+	if game.WordIndex >= len(game.Words) {
+		return ""
+	}
+
+	targetWord := game.Words[game.WordIndex]
+	input := game.CurrentInput
+
+	if len(input) == 0 {
+		return currentStyle.Render(targetWord)
+	}
+
+	var parts []string
+
+	for i := 0; i < len(input) || i < len(targetWord); i++ {
+		if i < len(input) && i < len(targetWord) {
+			// Both input and target have character at this position
+			if input[i] == targetWord[i] {
+				// Correct character
+				parts = append(parts, correctStyle.Render(string(input[i])))
+			} else {
+				// Wrong character - show both expected and actual
+				parts = append(parts,
+					actualCharStyle.Render(string(input[i]))+
+						errorDetailStyle.Render("/")+
+						expectedCharStyle.Render(string(targetWord[i])))
+			}
+		} else if i < len(input) {
+			// Extra character beyond word length
+			parts = append(parts, actualCharStyle.Render(string(input[i])))
+		} else {
+			// Remaining characters in target word
+			parts = append(parts, currentStyle.Render(string(targetWord[i])))
+		}
+	}
+
+	return strings.Join(parts, "")
+}
+
+// GetErrorStats returns statistics about errors in the current game
+func GetErrorStats(game *Game) (totalErrors int, topErrors []struct {
+	Char  rune
+	Count int
+}) {
+	totalErrors = len(game.Errors)
+
+	// Count errors by character
+	charCounts := make(map[rune]int)
+	for _, err := range game.Errors {
+		charCounts[err.TypedChar]++
+	}
+
+	// Convert to slice for sorting
+	type charCount struct {
+		Char  rune
+		Count int
+	}
+
+	var counts []charCount
+	for char, count := range charCounts {
+		counts = append(counts, charCount{Char: char, Count: count})
+	}
+
+	// Sort by count descending
+	sort.Slice(counts, func(i, j int) bool {
+		return counts[i].Count > counts[j].Count
+	})
+
+	// Return top 3
+	if len(counts) > 3 {
+		counts = counts[:3]
+	}
+
+	// Convert back to the expected type
+	var result []struct {
+		Char  rune
+		Count int
+	}
+	for _, c := range counts {
+		result = append(result, struct {
+			Char  rune
+			Count int
+		}{Char: c.Char, Count: c.Count})
+	}
+
+	return totalErrors, result
 }
